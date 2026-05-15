@@ -2,7 +2,6 @@ const API_SERVERS = [
     "https://zero-in-backend.onrender.com"
 ];
 const SECRET_KEY = "ZeroInSecure_2026_Protected!@#";
-
 function encryptData(data) {
     try {
         const str = JSON.stringify(data);
@@ -13,7 +12,6 @@ function encryptData(data) {
         return btoa(encrypted);
     } catch (e) { return null; }
 }
-
 function sanitizeInput(str) {
     if (!str) return "";
     return str.toString()
@@ -65,13 +63,11 @@ function showNotify(message) {
         setTimeout(() => box.remove(), 500);
     }, 3000);
 }
-
 (function checkAccess() {
     if (!localStorage.getItem('signup_data')) {
         window.location.replace('SIGNUP.html');
         return;
     }
-    
     const ua = navigator.userAgent.toLowerCase();
     const isPC = /windows|macintosh|linux/.test(ua) && !/android|iphone|ipad/.test(ua);
     if (isPC) {
@@ -84,7 +80,7 @@ function showNotify(message) {
 })();
 document.addEventListener('contextmenu', e => e.preventDefault());
 document.addEventListener('keydown', e => {
-    if ((e.ctrlKey || e.metaKey || e.altKey) && (e.key === 'u' || e.key === 's' || e.key === 'i' || e.key === 'c' || e.keyCode === 123)) {
+    if ((e.ctrlKey || e.metaKey || e.altKey) && (e.key === 'u' || e.key === 's' || e.key === 'i' || e.keyCode === 123)) {
         e.preventDefault();
         return false;
     }
@@ -110,6 +106,7 @@ window.onload = () => {
             localStorage.removeItem('signup_data');
             document.body.style.display = 'block';
             document.body.style.visibility = 'visible';
+            
             if (!hasShownWelcomeNote) {
                 showNotify(" Secure mode active. Please fill all fields.");
                 hasShownWelcomeNote = true;
@@ -123,7 +120,6 @@ window.onload = () => {
         window.location.replace('SIGNUP.html');
     }
 };
-
 window.onunload = () => {
     localStorage.clear();
     sessionStorage.clear();
@@ -136,7 +132,6 @@ function checkPasswordStrength(pass) {
     const hasSpecial = /[!@#$%^&*]/.test(pass);
     return minLen && hasUpper && hasLower && hasNumber && hasSpecial;
 }
-
 function togglePass(id, el) {
     const input = document.getElementById(id);
     if (!input) return;
@@ -149,7 +144,6 @@ function togglePass(id, el) {
         }, 3000);
     }
 }
-
 function generateSystemId() {
     const part1 = Math.floor(100000 + Math.random() * 900000);
     const part2 = Date.now().toString(36).toUpperCase().slice(-4);
@@ -158,7 +152,7 @@ function generateSystemId() {
 
 let isSubmitting = false;
 async function finalSubmit() {
-    if (isSubmitting) return showNotify("Please wait...");
+    if (isSubmitting) return showNotify(" Please wait...");
     isSubmitting = true;
     const displayName = sanitizeInput(document.getElementById('display-name').value);
     const userId = sanitizeInput(document.getElementById('user-id').value).toLowerCase();
@@ -171,9 +165,10 @@ async function finalSubmit() {
     const email = sanitizeInput(document.getElementById('display-email').value).toLowerCase();
     if (!displayName) { showNotify("Display name is required. Cannot be empty."); isSubmitting=false; return; }
     if (displayName.length < 2 || displayName.length > 23) { showNotify("Display name: 2‑23 characters only."); isSubmitting=false; return; }
-    if (!userId) { showNotify("Invalid User ID. Cannot be empty."); isSubmitting=false; return; }
+    if (!userId) { showNotify("User ID is required. Cannot be empty."); isSubmitting=false; return; }
     if (userId.length < 4 || userId.length > 20) { showNotify("User ID: Min 4 characters."); isSubmitting=false; return; }
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showNotify("Email: Valid format only."); isSubmitting=false; return; }
+    if (!email) { showNotify("Email address is required."); isSubmitting=false; return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showNotify("Email: Valid format only."); isSubmitting=false; return; }
     if (email.length > 40) { showNotify("Email: Maximum 40 characters."); isSubmitting=false; return; }
     if (!password) { showNotify("Create password is required."); isSubmitting=false; return; }
     if (!checkPasswordStrength(password)) { 
@@ -184,7 +179,6 @@ async function finalSubmit() {
     if (password !== confirmPass) { showNotify("Passwords do not match."); isSubmitting=false; return; }
     if (!birthMonth || !birthDay || !birthYear) { showNotify("Please select your complete birth date."); isSubmitting=false; return; }
     if (ageNum < 13 || ageNum > 120) { showNotify("Age must be between 13 and 120 years."); isSubmitting=false; return; }
-
     const birthday = `${birthYear}-${birthMonth.padStart(2, '0')}-${birthDay.padStart(2, '0')}`;
 
     try {
