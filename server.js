@@ -106,28 +106,11 @@ function createServer(port) {
         origin: [
             "https://yosora62-yoho.github.io", 
             "http://localhost:8158", 
-            "https://yourdomain.com"
+            "https://zero-in-backend.onrender.com"
         ],
         credentials: true
     }));
     app.use(express.json({ limit: '1mb' }));
-    const CLOUD_PROVIDERS = ['amazon', 'google', 'microsoft', 'azure', 'aws', 'digitalocean', 'ovh', 'linode', 'vultr', 'alibaba', 'tencent'];
-    app.use(async (req, res, next) => {
-        const client_ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress.replace(/^::ffff:/, '');
-        try {
-            const r = await fetch(`http://ip-api.com/json/${client_ip}?fields=status,isp,org,as,proxy,mobile,hosting`);
-            const d = await r.json();
-            if (d.status === 'success') {
-                const info = (d.org + d.isp + d.as).toLowerCase();
-                const isCloud = CLOUD_PROVIDERS.some(p => info.includes(p)) || d.hosting === true || d.proxy === true || d.mobile === true;
-                if (isCloud) {
-                    console.log(`[BLOCKED CLOUD/PROXY] Port:${port} | IP:${client_ip} | ${d.country || 'Unknown'}`);
-                    return res.status(404).end();
-                }
-            }
-        } catch (err) {}
-        next();
-    });
     app.post('/api/auth/verify', bruteForceBan, async (req, res) => {
         if (port !== MASTER_PORT) {
             const result = await forwardToMaster('/api/auth/verify', req.body);
@@ -160,6 +143,7 @@ function createServer(port) {
             return res.status(500).json({ status: 0, msg: "Server Error" });
         }
     });
+
     app.post('/api/auth/register-instant', async (req, res) => {
         if (port !== MASTER_PORT) {
             const result = await forwardToMaster('/api/auth/register-instant', req.body);
@@ -315,7 +299,6 @@ function createServer(port) {
                 }).filter(([key]) => !key.startsWith('_'))
             );
             return res.json({ status: 1, userData: filtered });
-
         } catch (err) {
             console.error("[GET USER DATABASE ERROR]", err);
             return res.status(500).json({ status: 0, message: "Server database error" });
@@ -327,4 +310,4 @@ function createServer(port) {
     });
     server.timeout = 30000;
     return app;
-}
+            }
