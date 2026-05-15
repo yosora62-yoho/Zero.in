@@ -78,7 +78,7 @@ const UserDB = {
         const { data, error } = await supabase
             .from('users')
             .select('email, userId, systemId')
-            .or(`email.ilike.%${email}%,userId.eq.${userId || 'null'},systemId.eq.${systemId || 'null'}`);
+            .or(`email.ilike.%${email}%,userId.eq.${userId},systemId.eq.${systemId}`);
         if (error) throw error;
         return {
             emailExists: data?.some(u => u.email?.toLowerCase() === email?.toLowerCase()) || false,
@@ -143,7 +143,6 @@ function createServer(port) {
             return res.status(500).json({ status: 0, msg: "Server Error" });
         }
     });
-
     app.post('/api/auth/register-instant', async (req, res) => {
         if (port !== MASTER_PORT) {
             const result = await forwardToMaster('/api/auth/register-instant', req.body);
@@ -157,6 +156,7 @@ function createServer(port) {
             '@github.com', '@tiktok.com', '@discord.com', '@wechat.com'
         ];
         const validEmail = allowedDomains.some(d => email?.toLowerCase().endsWith(d)) || provider !== 'normal';
+
         if (!email || !validEmail) {
             return res.json({ status: 0, message: "Abnormal Email" });
         }
@@ -269,6 +269,7 @@ function createServer(port) {
         }
         const { systemId } = req.query;
         if (!systemId) return res.json({ status: 0, message: "Missing required parameter: systemId" });
+
         try {
             const user = await UserDB.findBySystemId(systemId);
             if (!user) return res.json({ status: 0, message: "User not found" });
