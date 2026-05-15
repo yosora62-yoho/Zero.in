@@ -310,4 +310,5 @@ function createServer(port) {
     });
     server.timeout = 30000;
     return app;
-            }
+}
+createServer(MASTER_PORT);
