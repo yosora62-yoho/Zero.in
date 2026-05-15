@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LOGIN</title>
+    <link rel="stylesheet" href="LOGIN.css">
+  </head>
+  <body>
+    <div class="login-container">
+     <div id="loading-page">
+       <h1 class="logo">ZERO<span>.</span>IN</h1>
+     </div>
+     <div id="main-page" class="hidden">
+      <div id="notify-container" style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; width: 80%;">
+      </div>
+      <header class="top-header">
+        <h1 class="logo-top">ZERO<span>.</span>IN</h1>
+      </header>
+      <div class="login-section">
+       <h2 class="login-display">Login Zero<span class="red-dot-inline">.</span>in</h2>
+       <div class="input-group">
+       <div class="input-field">
+         <input type="email" id="email" required placeholder=" ">
+         <label for="email">Email Address</label>
+        </div>
+        <div class="input-field">
+            <input type="password" id="password" required placeholder=" ">
+            <label for="password">Password</label>
+          <div class="eye-wrapper" id="togglePassword">
+            <img src="EYE.jpg" class="eye-icon">
+            <div class="eye-slash"></div> 
+          </div>
+        </div>
+          <div class="auth-links">
+            <p class="signup-text">Don't have an account yet? <a href="SIGNUP.html" class="highlight-red">Sign up</a></p>
+            <a href="forgot-password.html" class="forgot-link">forgot password?</a>
+          </div>
+          <button type="button" class="btn-submit" onclick="checkLogin()">CONTINUE</button>
+          <div class="separator">
+              <span class="line"></span>
+              <span class="or-text">OR</span>
+              <span class="line"></span>
+          </div>
+          <div class="social-login">
+              <img src="GM.jpg" alt="Google" class="social-icon" onclick="googleLogin()">
+              <img src="FB.jpg" alt="Facebook" class="social-icon" onclick="facebookLogin()">
+              <img src="GithuD.jpg" alt="GitHub" class="social-icon" onclick="githubLogin()">
+              <img src="TT.jpg" alt="TikTok" class="social-icon" onclick="tiktokLogin()">
+              <img src="DC.jpg" alt="Discord" class="social-icon" onclick="discordLogin()">
+               <img src="TW.jpg" alt="Twitch" class="social-icon" onclick="wechatLogin()">
+               <p class="auto-id-info">
+               <span class="highlight-red">Fast-track:</span> Jump straight into the action.
+               </p>
+           </div>
+            <div class="footer-contact">
+              <p> DEVELOPED BY YOSORA</p>
+              <a href="mailto:yosora.dev@outlook.com" class="mail-link">yosora.dev@outlook.com</a>
+            </div>
+       </div>
+      </div>
+     </div>
+    </div>
+    <script src="LOGIN.js"></script>
+  </body>
+</html>

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PROFILE • ZERO.IN</title>
+    <link rel="stylesheet" href="ME.css">
+</head>
+<body>
+    <div id="profile-page">
+        <nav class="top-nav" id="main-nav">
+            <button class="nav-btn" onclick="window.history.back()">×</button>
+            <div class="nav-right">
+                <img src="แก้ไข.png" class="action-icon" onclick="location.href='EDIT.html'" alt="Edit">
+                <img src="ตั้งค่า.jpg" class="action-icon" onclick="location.href='SETTINGS.html'" alt="Settings">
+            </div>
+        </nav>
+
+        <div id="copy-toast" class="toast">✔ User ID copied successfully!</div>
+
+        <div class="scroll-container" id="scroll-area">
+            <div class="header-unit">
+                <div id="cover-aura" class="aura-bg"></div>
+                <img id="cover-img" src="" class="blur-cover" style="display:none;">
+                <div class="overlay"></div>
+                <div class="cover-separator"></div>
+            </div>
+
+            <div class="identity-section">
+                <div class="avatar-holder">
+                    <div id="default-z" class="z-fallback">Z</div>
+                    <img id="profile-img" src="" class="real-avatar" style="display:none;">
+                </div>
+                <div class="user-titles" onclick="copyUserId()">
+                    <h1 id="display-name">ZERO USER</h1>
+                    <p id="user-handle">@ZERO.IN.USER</p>
+                </div>
+                <p id="user-bio" class="bio-text">-----</p>
+                <div class="social-stats">
+                    <div class="stat"><span class="val" id="count-following">0</span><span class="lbl">Following</span></div>
+                    <div class="stat"><span class="val" id="count-followers">0</span><span class="lbl">Followers</span></div>
+                    <div class="stat"><span class="val" id="count-friends">0</span><span class="lbl">Friends</span></div>
+                </div>
+            </div>
+
+            <div class="tab-container">
+                <div class="tab-item" onclick="switchTab(this, 'posts')">POSTS</div>
+                <div class="tab-item active" onclick="switchTab(this, 'comments')">
+                    <img src="lock.png" class="lock-icon" id="lock-comments" alt="Locked">
+                    COMMENTS
+                </div>
+                <div class="tab-item" onclick="switchTab(this, 'reposts')">
+                    <img src="lock.png" class="lock-icon" id="lock-reposts" alt="Locked">
+                    REPOSTS
+                </div>
+                <div class="tab-item" onclick="switchTab(this, 'likes')">
+                    <img src="lock.png" class="lock-icon" id="lock-likes" alt="Locked">
+                    LIKES
+                </div>
+                <div class="tab-item" onclick="switchTab(this, 'saves')">
+                    <img src="lock.png" class="lock-icon" id="lock-saves" alt="Locked">
+                    SAVES
+                </div>
+            </div>
+
+            <div class="content-status-bar">
+                <div id="stats-display" class="status-left">
+                    <span id="stat-count">0</span> <span id="stat-label">COMMENTS</span>
+                </div>
+                <div class="search-unit">
+                    <input type="text" id="search-input" placeholder="Search..." class="search-box" maxlength="150">
+                    <img src="search.png" class="search-icon" onclick="toggleSearch()" alt="Search">
+                </div>
+            </div>
+
+            <div id="feed-wrapper" class="feed-content">
+                <div class="empty-feed">
+                    <p class="empty-title">NO ACTIVITY</p>
+                </div>
+                <div class="scroll-filler"></div>
+            </div>
+        </div>
+
+        <button class="fab-add" onclick="location.href='CREATE_POST.html'">+</button>
+    </div>
+
+    <script src="ME.js"></script>
+</body>
+</html>

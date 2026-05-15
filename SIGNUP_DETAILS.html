@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIGNUP</title>
+    <link rel="stylesheet" href="SIGNUP_DETAILS.css">
+    <style>
+        body { display: block; }
+    </style>
+    <script src="SIGNUP_DETAILS.js"></script>
+</head>
+<body>
+  <div id="notify-container" style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; width: 80%;"></div>
+<div class="signup-container">
+  <div class="login-display">Signup Zero<span class="red-dot-inline">.</span>in</div>
+
+  <div class="form-part">
+    <h3 class="part-title">IDENTITY</h3>
+    <div class="input-field">
+      <input type="text" id="display-name" maxlength="23" placeholder=" " required>
+      <label for="display-name">DISPLAY NAME <span class="required-star">*</span></label>
+    </div>
+    <p class="input-desc">Public name shown to others. (Max 23 chars)</p>
+
+    <div class="input-field">
+      <input type="text" id="user-id" maxlength="20" placeholder=" " required 
+             oninput="this.value = this.value.toLowerCase().replace(/[^a-z0-9._-]/g, '')">
+      <label for="user-id">USER ID <span class="required-star">*</span></label>
+    </div>
+    <p class="input-desc">Unique ID for searching. (a-z, 0-9, . , _ , - only)</p>
+  </div>
+
+  <div class="form-part">
+    <h3 class="part-title">CREDENTIALS</h3>
+    <div class="input-field">
+      <input type="email" id="display-email" maxlength="40" placeholder=" " required>
+      <label for="display-email">EMAIL ADDRESS <span class="required-star">*</span></label>
+    </div>
+    <p class="input-desc">• Maximum 40 characters</p>
+
+    <div class="input-field">
+      <input type="password" id="password" maxlength="40" placeholder=" " required>
+      <label for="password">CREATE PASSWORD <span class="required-star">*</span></label>
+      <div class="eye-wrapper" onclick="togglePass('password', this)">
+        <img src="EYE.jpg" class="eye-icon">
+        <div class="eye-slash"></div>
+      </div>
+    </div>
+    <p class="input-desc">• Min 7 chars | 1 Uppercase, 1 Lowercase, 1 Number</p>
+
+    <div class="input-field">
+      <input type="password" id="confirm-password" maxlength="40" placeholder=" " required>
+      <label for="confirm-password">CONFIRM PASSWORD <span class="required-star">*</span></label>
+      <div class="eye-wrapper" onclick="togglePass('confirm-password', this)">
+        <img src="EYE.jpg" class="eye-icon">
+        <div class="eye-slash"></div>
+      </div>
+    </div>
+    <p class="input-desc">• Re‑enter password exactly as above</p>
+  </div>
+
+  <div class="form-part">
+    <h3 class="part-title">PERSONAL DETAILS</h3>
+
+    <div class="dob-row">
+      <div class="dob-col">
+        <div class="input-field dob-field">
+          <select id="birth-month" class="dob-select" required>
+            <option value="" disabled selected></option>
+            <option value="1">01</option>
+            <option value="2">02</option>
+            <option value="3">03</option>
+            <option value="4">04</option>
+            <option value="5">05</option>
+            <option value="6">06</option>
+            <option value="7">07</option>
+            <option value="8">08</option>
+            <option value="9">09</option>
+            <option value="10">10</option>
+            <option value="11">11</option>
+            <option value="12">12</option>
+          </select>
+          <label for="birth-month">MONTH <span class="required-star">*</span></label>
+        </div>
+      </div>
+
+      <div class="dob-col">
+        <div class="input-field dob-field">
+          <select id="birth-day" class="dob-select" required>
+            <option value="" disabled selected></option>
+          </select>
+          <label for="birth-day">DAY <span class="required-star">*</span></label>
+        </div>
+      </div>
+
+      <div class="dob-col">
+        <div class="input-field dob-field">
+          <select id="birth-year" class="dob-select" required>
+            <option value="" disabled selected></option>
+          </select>
+          <label for="birth-year">YEAR <span class="required-star">*</span></label>
+        </div>
+      </div>
+    </div>
+    <p class="input-desc">• Select your full birth date</p>
+
+    <div class="input-field age-field">
+      <div class="age-static">
+        <span class="age-label">CALCULATED AGE</span>
+        <span id="age-display" class="age-value">-- YEARS OLD</span>
+      </div>
+    </div>
+    <p id="age-note" class="input-desc age-warning">• Must be at least 13 years old to register</p>
+
+    <button type="button" id="submit-signup" class="submit-btn">COMPLETE SIGNUP</button>
+  </div>
+
+</div>
+</body>
+</html>

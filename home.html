@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZERO.IN • YOSORA</title>
+    <link rel="stylesheet" href="home.css">
+</head>
+<body>
+    <div id="main-page" class="page active">
+        <header class="main-header">
+            <div class="header-left">
+                <div class="brand">HOME</div>
+            </div>
+
+            <div class="header-right">
+                <div class="nav-tools">
+                    <img src="search.png" class="h-icon-search" onclick="toggleSearch()">
+                    <div class="notify-wrapper" onclick="location.href='NOTIFY.html'">
+                        <img src="notify.png" class="h-icon-bell">
+                        <span class="notify-badge" id="notify-badge" style="display:none;">0</span>
+                    </div>
+                </div>
+                <div class="profile-trigger" onclick="location.href='ME.html'">
+                    <div id="header-default-z" class="h-z-fallback">Z</div>
+                    <img id="header-avatar-img" src="" style="display:none;">
+                </div>
+            </div>
+        </header>
+
+        <div class="feed-tabs">
+            <div class="tab-btn" data-tab="you">You</div>
+            <div class="tab-btn active" data-tab="following">Following</div>
+        </div>
+
+        <main class="feed-container">
+            <div class="empty-feed">
+                <p>No posts here yet</p>
+                <small>Posts from you and people you follow will appear here</small>
+            </div>
+        </main>
+
+        <nav class="bottom-nav">
+            <div class="nav-item active" onclick="location.href='HOME.html'">
+                <img src="HOME.png" alt="Home" class="nav-icon">
+                <span class="nav-label">Home</span>
+            </div>
+            <div class="nav-item" onclick="location.href='WHISPER.html'">
+                <img src="whisper.png" alt="Note" class="nav-icon">
+                <span class="nav-label">Note</span>
+            </div>
+            <div class="nav-center-btn" onclick="location.href='CREATE_POST.html'">
+                <span>+</span>
+            </div>
+            <div class="nav-item" onclick="location.href='CHAT.html'">
+                <img src="chat.png" alt="Chat" class="nav-icon">
+                <span class="nav-label">Chat</span>
+            </div>
+            <div class="nav-item" onclick="location.href='ME.html'">
+                <img src="ME.png" alt="You" class="nav-icon">
+                <span class="nav-label">You</span>
+            </div>
+        </nav>
+    </div>
+
+    <div id="search-page" class="page">
+        <header class="search-header">
+            <div class="search-input-wrap">
+                <input type="text" id="search-input" placeholder="Search people, posts or tags..." autocomplete="off">
+            </div>
+            <div class="search-action-btn" onclick="executeSearch()">Search</div>
+        </header>
+
+        <main class="search-result-container">
+            <div class="empty-search">
+                <p>Find people, posts and moments</p>
+                <small>Type keywords above to start exploring</small>
+            </div>
+        </main>
+    </div>
+
+    <div id="copy-toast" class="toast"></div>
+
+    <script src="home.js"></script>
+</body>
+</html>

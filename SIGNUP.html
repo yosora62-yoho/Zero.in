@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIGNUP</title>
+    <link rel="stylesheet" href="SIGNUP.css">
+  </head>
+  <body>
+    <div id="loading-page">
+    <h1 class="logo-center">ZERO<span>.</span>IN</h1>
+    </div>
+
+    <div id="main-page" class="container">
+    <div id="notify-container" style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; width: 80%;">
+    </div>
+    <h1 class="logo-top">ZERO<span>.</span>IN</h1>
+    
+    <div class="login-section">
+        <div class="login-display">Signup Zero<span class="red-dot-inline">.</span>in</div>
+        
+        <div class="input-field">
+        <input type="text" id="username" required placeholder=" " maxlength="23">
+        <label for="username">DISPLAY NAME</label>
+        </div>
+
+        <div class="input-field">
+          <input type="email" id="email" required placeholder=" ">
+          <label for="email">EMAIL ADDRESS</label>
+        </div>
+        
+        <div class="auth-links">
+         <p class="signup-text">Already have an account? <a href="login.html" class="highlight-red">Login</a></p>
+         <a href="#" class="forgot-link">Terms of service</a>
+        </div>
+        <button type="button" class="btn-submit" onclick="goToDetails()">CONTINUE</button>
+        
+        <div class="separator">
+            <span class="line"></span>
+            <span class="or-text">OR</span>
+            <span class="line"></span>
+        </div>
+
+        <div class="social-login">
+            <img src="GM.jpg" alt="Google" class="social-icon" onclick="googleLogin()">
+            <img src="FB.jpg" alt="Facebook" class="social-icon" onclick="facebookLogin()">
+            <img src="GithuD.jpg" alt="GitHub" class="social-icon" onclick="githubLogin()">
+            <img src="TT.jpg" alt="TikTok" class="social-icon" onclick="tiktokLogin()">
+            <img src="DC.jpg" alt="Discord" class="social-icon" onclick="discordLogin()">
+            <img src="TW.jpg" alt="Twitch" class="social-icon" onclick="wechatLogin()">
+            <p class="auto-id-info">
+            <span class="highlight-red">Instant Identity:</span> Skip the setup with our automated ID generation.
+            </p>
+        </div>
+
+        <div class="footer-contact">
+            <p> DEVELOPED BY YOSORA</p>
+            <a href="mailto:yosora.dev@outlook.com" class="mail-link">yosora.dev@outlook.com</a>
+        </div>
+    </div>
+    <script src="SIGNUP.js"></script>
+</body>
+</html>
