@@ -202,7 +202,7 @@ function createServer(port) {
             const result = await forwardToMaster('/api/auth/register-full', req.body);
             return res.json(result);
         }
-        const { displayName, userId, systemId, email, password, birthday, backup_email, age, gender, phone, address, country, bio } = req.body;
+        const { displayName, userId, systemId, email, password, birthday, age, backup_email, gender, phone, address, country, bio } = req.body;
         if (!displayName || !userId || !systemId || !email || !password || !birthday) {
             return res.json({ status: 0, message: "Missing required fields" });
         }
@@ -214,18 +214,18 @@ function createServer(port) {
             const hashedPass = await bcrypt.hash(password, saltRounds);
             const existing = await UserDB.findByEmail(email);
             const userData = {
-                displayName,
-                userId,
-                systemId,
-                backup_email: backup_email ?? null,
+                displayName: displayName.trim(),
+                userId: userId.trim(),
+                systemId: systemId.trim(),
+                backup_email: backup_email?.trim() || null,
                 password: hashedPass,
-                birthday,
-                age: age ?? null,
-                gender: gender ?? null,
-                phone: phone ?? null,
-                address: address ?? null,
-                country: country ?? null,
-                bio: bio ?? null,
+                birthday: birthday,
+                age: parseInt(age) || null,
+                gender: gender || null,
+                phone: phone?.trim() || null,
+                address: address?.trim() || null,
+                country: country?.trim() || null,
+                bio: bio?.trim() || null,
                 avatar: null,
                 cover: null,
                 stats: { following: 0, followers: 0, friends: 0 },
@@ -241,7 +241,7 @@ function createServer(port) {
             } else {
                 await UserDB.create({
                     ...userData,
-                    email: email.toLowerCase(),
+                    email: email.toLowerCase().trim(),
                     provider: 'normal',
                     signup_date: new Date().toISOString()
                 });
@@ -249,8 +249,8 @@ function createServer(port) {
             console.log(`✔  [MASTER ${MASTER_PORT}] Registered via Supabase: #${systemId} | @${userId} | ${email}`);
             res.json({ status: 1, message: "✔  Registration complete!" });
         } catch (err) {
-            console.error('[REGISTER FULL ERROR]', err);
-            res.status(500).json({ status: 0, message: "Server Error" });
+            console.error('[REGISTER FULL ERROR DETAIL]', err.message, err);
+            res.status(200).json({ status: 0, message: "Server Error: " + err.message });
         }
     });
     app.get('/api/user/get/async', async (req, res) => {
@@ -269,7 +269,6 @@ function createServer(port) {
         }
         const { systemId } = req.query;
         if (!systemId) return res.json({ status: 0, message: "Missing required parameter: systemId" });
-
         try {
             const user = await UserDB.findBySystemId(systemId);
             if (!user) return res.json({ status: 0, message: "User not found" });
