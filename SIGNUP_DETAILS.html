@@ -21,14 +21,14 @@
       <input type="text" id="display-name" maxlength="23" placeholder=" " required>
       <label for="display-name">DISPLAY NAME <span class="required-star">*</span></label>
     </div>
-    <p class="input-desc">Public name shown to others. (Max 23 chars)</p>
+    <p class="input-desc">Public name shown to others. 2‑23 characters only. Do not use &lt; &gt; " ' ;</p>
 
     <div class="input-field">
       <input type="text" id="user-id" maxlength="20" placeholder=" " required 
              oninput="this.value = this.value.toLowerCase().replace(/[^a-z0-9._-]/g, '')">
       <label for="user-id">USER ID <span class="required-star">*</span></label>
     </div>
-    <p class="input-desc">Unique ID for searching. (a-z, 0-9, . , _ , - only)</p>
+    <p class="input-desc">Unique ID for searching. Min 4 characters. Allowed: a‑z, 0‑9, . , _ , - only</p>
   </div>
 
   <div class="form-part">
@@ -37,7 +37,7 @@
       <input type="email" id="display-email" maxlength="40" placeholder=" " required>
       <label for="display-email">EMAIL ADDRESS <span class="required-star">*</span></label>
     </div>
-    <p class="input-desc">• Maximum 40 characters</p>
+    <p class="input-desc">• Valid format only (e.g. name@example.com). Max 40 characters</p>
 
     <div class="input-field">
       <input type="password" id="password" maxlength="40" placeholder=" " required>
@@ -47,7 +47,7 @@
         <div class="eye-slash"></div>
       </div>
     </div>
-    <p class="input-desc">• Min 7 chars | 1 Uppercase, 1 Lowercase, 1 Number</p>
+    <p class="input-desc">• Min 8 chars | Must include: 1 Uppercase, 1 Lowercase, 1 Number, 1 Special char (!@#$%^&*)</p>
 
     <div class="input-field">
       <input type="password" id="confirm-password" maxlength="40" placeholder=" " required>
@@ -57,7 +57,7 @@
         <div class="eye-slash"></div>
       </div>
     </div>
-    <p class="input-desc">• Re‑enter password exactly as above</p>
+    <p class="input-desc">• Re‑enter password exactly as above. Case‑sensitive</p>
   </div>
 
   <div class="form-part">
@@ -103,7 +103,7 @@
         </div>
       </div>
     </div>
-    <p class="input-desc">• Select your full birth date</p>
+    <p class="input-desc">• Select your complete and correct birth date</p>
 
     <div class="input-field age-field">
       <div class="age-static">
@@ -111,11 +111,11 @@
         <span id="age-display" class="age-value">-- YEARS OLD</span>
       </div>
     </div>
-    <p id="age-note" class="input-desc age-warning">• Must be at least 13 years old to register</p>
+    <p id="age-note" class="input-desc age-warning">• Age must be between 13 and 120 years to register</p>
 
     <button type="button" id="submit-signup" class="submit-btn">COMPLETE SIGNUP</button>
   </div>
-
+  
 </div>
 </body>
-</html>
+    </html>
