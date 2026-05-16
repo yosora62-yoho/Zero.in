@@ -107,6 +107,7 @@ function createServer(port) {
     app.use(cors({ 
         origin: [
             "https://yosora62-yoho.github.io", 
+            "https://yosora62-yoho.github.io/Zero.in",
             "http://localhost:8158", 
             "https://zero-in-backend.onrender.com"
         ],
@@ -205,8 +206,13 @@ function createServer(port) {
             return res.json(result);
         }
         const { displayName, userId, systemId, email, password, birthday, age, backup_email, gender, phone, address, country, bio } = req.body;
-        if (!displayName || !userId || !systemId || !email || !password || !birthday) {
-            return res.json({ status: 0, message: "Missing required fields" });
+        const numAge = parseInt(age);
+        if (!displayName || !userId || !systemId || !email || !password || !birthday || isNaN(numAge) || numAge < 13 || numAge > 120) {
+            return res.json({ status: 0, message: "Missing required fields or invalid age" });
+        }
+        const passRule = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{8,}$/;
+        if (!passRule.test(password)) {
+            return res.json({ status: 0, message: "Password: Min 8 chars | Must include: Uppercase, Lowercase, Number, Special (!@#$%^&*)" });
         }
         try {
             const dup = await UserDB.checkDuplicate({ email, userId, systemId });
@@ -222,7 +228,7 @@ function createServer(port) {
                 backup_email: backup_email?.trim() || null,
                 password: hashedPass,
                 birthday: birthday,
-                age: parseInt(age) || null,
+                age: numAge,
                 gender: gender || null,
                 phone: phone?.trim() || null,
                 address: address?.trim() || null,
