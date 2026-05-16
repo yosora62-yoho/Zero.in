@@ -1,12 +1,35 @@
-if (!/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+if (!/Android|iPhone|iPad|iPod|Tablet|Silk/i.test(navigator.userAgent)) {
     window.location.href = "https://www.google.com/404";
 }
+
+document.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('keydown', e => {
+    if (e.key === 'F12' || 
+        (e.ctrlKey && e.shiftKey && ['I','J','C'].includes(e.key.toUpperCase())) || 
+        (e.ctrlKey && e.key.toUpperCase() === 'U')) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+    }
+});
+let devtools = false;
+Object.defineProperty(window, 'devtools', {
+    get: () => { devtools = true; },
+    set: () => { devtools = true; }
+});
+setInterval(() => {
+    if (devtools || window.outerWidth - window.innerWidth > 150) {
+        window.location.href = "https://www.google.com/404";
+    }
+}, 500);
+
 const ALLOWED_DOMAINS = [
     '@gmail.com', '@outlook.com', '@hotmail.com', '@icloud.com',
     '@proton.me', '@yahoo.com', '@protonmail.com', '@zoho.com',
     '@yandex.com', '@mail.ru', '@163.com', '@qq.com', '@facebook.com',
     '@github.com', '@tiktok.com', '@discord.com', '@wechat.com'
 ];
+
 function generateUniqueId(name) {
     if (!name || name.trim().length === 0) {
         const randomBase = Math.random().toString(36).substring(2, 8);
@@ -76,6 +99,7 @@ window.onload = () => {
         }
     }, 0); 
 };
+
 function goToDetails() {
     const name = document.getElementById('username').value.trim();
     const email = document.getElementById('email').value.trim().toLowerCase(); 
@@ -113,7 +137,7 @@ function goToDetails() {
     }
     const isAllowed = ALLOWED_DOMAINS.some(domain => email.endsWith(domain));
     if (!isAllowed) {
-        showNotify("⚠ his Email domain is not allowed. Please use Gmail, Outlook, Yahoo or other trusted providers.");
+        showNotify("⚠ This Email domain is not allowed. Please use Gmail, Outlook, Yahoo or other trusted providers.");
         return;
     }
     const userId = generateUniqueId(name);
@@ -136,15 +160,13 @@ const githubId = 'Ov23lijBov1QHujGticS';
 const tiktokKey = 'awphc9efsebgb3qe';
 const discordId = '1502643313352900748';
 const wechatId = 'b8irhkf8oi282yoz60mrlhu3o0nih7';
-
 function googleLogin() {
     const uri = window.location.origin;
     const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleId}&redirect_uri=${uri}&response_type=token&scope=email profile`;
     window.location.href = url;
 }
 function facebookLogin() {
-    const isLocal = window.location.hostname === 'localhost';
-    const redirect = isLocal ? 'http://localhost:8158/login.html' : 'https://yosora62-yoho.github.io/';
+    const redirect = 'https://yosora62-yoho.github.io/';
     window.location.href = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${facebookId}&redirect_uri=${redirect}&response_type=token&scope=public_profile,email`;
 }
 function githubLogin() {
@@ -152,8 +174,7 @@ function githubLogin() {
     window.location.href = `https://github.com/login/oauth/authorize?client_id=${githubId}&redirect_uri=${redirect_uri}&scope=user:email`;
 }
 function tiktokLogin() {
-    const isLocal = window.location.hostname === 'localhost';
-    const redirect = isLocal ? 'http://localhost:8158/login.html' : 'https://yosora62-yoho.github.io/';
+    const redirect = 'https://yosora62-yoho.github.io/';
     window.location.href = `https://www.tiktok.com/v2/auth/authorize/?client_key=${tiktokKey}&scope=user.info.basic&redirect_uri=${encodeURIComponent(redirect)}`;
 }
 function discordLogin() {
@@ -165,6 +186,7 @@ function wechatLogin() {
     const redirect = encodeURIComponent(window.location.origin);
     window.location.href = `https://open.weixin.qq.com/connect/qrconnect?appid=${wechatId}&redirect_uri=${redirect}&response_type=code&scope=snsapi_login`;
 }
+
 function showNotify(message) {
     const container = document.getElementById('notify-container');
     if (!container) return;
@@ -184,4 +206,4 @@ function showNotify(message) {
         box.style.transition = 'all 0.5s ease';
         setTimeout(() => box.remove(), 500);
     }, 3000);
-}
+    }
