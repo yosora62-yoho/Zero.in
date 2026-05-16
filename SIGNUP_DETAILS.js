@@ -10,7 +10,6 @@ async function sendToAllServers(endpoint, payload) {
                 "Content-Type": "application/json",
                 "Accept": "application/json"
             },
-            mode: "cors",
             body: JSON.stringify(payload)
         }).then(res => {
             if (!res.ok) throw new Error("Server error");
