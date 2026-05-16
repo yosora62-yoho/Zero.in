@@ -53,35 +53,52 @@ async function sendToAllServers(endpoint, payload) {
     const results = await Promise.all(promises);
     return results.find(r => r?.status === 1) || results[0];
 }
-
-let isShowingNotify = false;
+let activeNotify = null;
 function showNotify(message, type = 'default') {
     const container = document.getElementById('notify-container');
-    if (!container || isShowingNotify) return;
-    isShowingNotify = true;
+    if (!container) return;
+    if (activeNotify) {
+        activeNotify.remove();
+        activeNotify = null;
+    }
+
     const box = document.createElement('div');
     box.className = 'notify-box';
     box.innerText = message;
     let borderColor = '#ff4444';
-    let bgColor = 'rgba(0,0,0,0.85)';
+    let bgColor = 'rgba(0,0,0,0.92)';
     if (type === 'success') borderColor = '#00ff88';
     if (type === 'warning') borderColor = '#ffbb33';
     if (type === 'info') borderColor = '#3399ff';
     box.style.cssText = `
-        padding: 12px 20px; border-radius: 8px; margin: 8px 0;
-        background: ${bgColor}; color: #fff; border: 1px solid ${borderColor};
-        font-size: 14px; transition: all 0.3s ease; text-align: center;
+        position: relative;
+        width: 92%;
+        max-width: 520px;
+        margin: 12px auto 20px auto;
+        padding: 10px 16px;
+        border-radius: 6px;
+        background: ${bgColor};
+        color: #fff;
+        border: 1px solid ${borderColor};
+        font-size: 14px;
+        line-height: 1.4;
+        text-align: center;
+        z-index: 9999;
+        box-sizing: border-box;
     `;
+
     container.appendChild(box);
+    activeNotify = box;
 
     setTimeout(() => {
-        box.style.opacity = '0';
-        box.style.transform = 'translateY(-5px)';
-        setTimeout(() => {
-            box.remove();
-            isShowingNotify = false;
-        }, 500);
-    }, 4000);
+        if (activeNotify === box) {
+            box.style.opacity = '0';
+            setTimeout(() => {
+                box.remove();
+                if (activeNotify === box) activeNotify = null;
+            }, 300);
+        }
+    }, 3500);
 }
 
 (function checkAccess() {
@@ -157,6 +174,7 @@ window.onunload = () => {
     localStorage.clear();
     sessionStorage.clear();
 };
+
 function checkPasswordStrength(pass) {
     const minLen = pass.length >= 8;
     const hasUpper = /[A-Z]/.test(pass);
@@ -168,7 +186,7 @@ function checkPasswordStrength(pass) {
     if (!hasUpper || !hasLower) return 0;
     if (!hasNumber) return 0;
     if (!hasSpecial) return 0;
-    
+    showNotify("Password strength: STRONG", 'success');
     return 1;
 }
 
@@ -185,13 +203,11 @@ function togglePass(id, el) {
         }, 3000);
     }
 }
-
 function generateSystemId() {
     const part1 = Math.floor(100000 + Math.random() * 900000);
     const part2 = Date.now().toString(36).toUpperCase().slice(-4);
     return `${part1}${part2}`;
 }
-
 let isSubmitting = false;
 async function finalSubmit() {
     if (isSubmitting) { 
@@ -208,62 +224,60 @@ async function finalSubmit() {
     const rawBirthDay = document.getElementById('birth-day').value;
     const rawBirthYear = document.getElementById('birth-year').value;
     const ageNum = parseInt(document.getElementById('age-display').textContent) || 0;
-    if (!rawDisplayName) { showNotify("Display Name cannot be empty!", 'default'); isSubmitting=false; return; }
-    if (!rawUserId) { showNotify("User ID is required!", 'default'); isSubmitting=false; return; }
-    if (!rawEmail) { showNotify("Email is required!", 'default'); isSubmitting=false; return; }
-    if (!password) { showNotify("Create Password is empty!", 'default'); isSubmitting=false; return; }
-    if (!confirmPass) { showNotify("Confirm Password is empty!", 'default'); isSubmitting=false; return; }
-    if (!rawBirthMonth || !rawBirthDay || !rawBirthYear) { showNotify("Complete Birth Date required!", 'default'); isSubmitting=false; return; }
+    if (!rawDisplayName) { showNotify("ERROR: Display Name cannot be empty!", 'default'); isSubmitting=false; return; }
+    if (!rawUserId) { showNotify("ERROR: User ID is required!", 'default'); isSubmitting=false; return; }
+    if (!rawEmail) { showNotify("ERROR: Email is required!", 'default'); isSubmitting=false; return; }
+    if (!password) { showNotify("ERROR: Create Password is empty!", 'default'); isSubmitting=false; return; }
+    if (!confirmPass) { showNotify("ERROR: Confirm Password is empty!", 'default'); isSubmitting=false; return; }
+    if (!rawBirthMonth || !rawBirthDay || !rawBirthYear) { showNotify("ERROR: Complete Birth Date required!", 'default'); isSubmitting=false; return; }
     const displayName = sanitizeInput(rawDisplayName);
     const userId = sanitizeInput(rawUserId).toLowerCase();
     const email = sanitizeInput(rawEmail, true).toLowerCase();
-    if (displayName.length < 2 || displayName.length > 23) { showNotify("Name: 2‑23 chars only!", 'warning'); isSubmitting=false; return; }
-    if (userId.length < 4 || userId.length > 20) { showNotify("ID: 4‑20 chars only!", 'warning'); isSubmitting=false; return; }
-    if (/[^a-z0-9._-]/.test(userId)) { showNotify("ID allows only: a‑z 0‑9 . _ -", 'warning'); isSubmitting=false; return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showNotify("Invalid Email format!", 'warning'); isSubmitting=false; return; }
-    if (email.length > 40) { showNotify("Email: Max 40 chars.", 'warning'); isSubmitting=false; return; }
+    if (displayName.length < 2 || displayName.length > 23) { showNotify("RULE: Name 2‑23 chars only!", 'warning'); isSubmitting=false; return; }
+    if (userId.length < 4 || userId.length > 20) { showNotify("RULE: ID 4‑20 chars only!", 'warning'); isSubmitting=false; return; }
+    if (/[^a-z0-9._-]/.test(userId)) { showNotify("RULE: ID allows only: a‑z 0‑9 . _ -", 'warning'); isSubmitting=false; return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showNotify("RULE: Invalid Email format!", 'warning'); isSubmitting=false; return; }
+    if (email.length > 40) { showNotify("RULE: Email max 40 chars.", 'warning'); isSubmitting=false; return; }
     if (!checkPasswordStrength(password)) { 
-        showNotify("Password: Min 8 | Upper+Lower+Num+Special (!@#$%^&*)", 'warning'); 
+        showNotify("SECURITY: Min 8 | Upper+Lower+Num+Special", 'warning'); 
         isSubmitting=false; return; 
     }
-    if (password !== confirmPass) { showNotify("Passwords do not match!", 'default'); isSubmitting=false; return; }
-    if (ageNum < 13 || ageNum > 120) { showNotify("Age must be 13‑120 years.", 'default'); isSubmitting=false; return; }
+    if (password !== confirmPass) { showNotify("MISMATCH: Passwords do not match!", 'default'); isSubmitting=false; return; }
+    if (ageNum < 13 || ageNum > 120) { showNotify("AGE: Must be 13‑120 years.", 'default'); isSubmitting=false; return; }
     const birthMonth = sanitizeInput(rawBirthMonth);
     const birthDay = sanitizeInput(rawBirthDay);
     const birthYear = sanitizeInput(rawBirthYear);
     const birthday = `${birthYear}-${birthMonth.padStart(2, '0')}-${birthDay.padStart(2, '0')}`;
 
     try {
-        showNotify("Processing secure data...", 'info');
-
+        showNotify("CONNECTING: Sending data...", 'info');
         const systemId = generateSystemId();
         const result = await sendToAllServers('/api/auth/register-full', {
             displayName, userId, systemId, email, password, birthday, age: ageNum
         });
-
         if (result.status === 1) {
-            showNotify(`Success! Your ID: #${systemId}`, 'success');
+            showNotify(`SUCCESS: Account created! ID: #${systemId}`, 'success');
             document.querySelectorAll('input').forEach(i => i.value = '');
             setTimeout(() => window.location.href = 'home.html', 1800);
         } else {
             if (result.message === 'SYSTEMID_EXISTS') {
-                showNotify("Regenerating ID...", 'warning');
+                showNotify("CONFLICT: ID exists. Generating new...", 'warning');
                 setTimeout(() => { finalSubmit(); }, 800);
                 return;
             } else if (result.message === 'USER_ID_EXISTS') {
-                showNotify("User ID already taken.", 'default');
+                showNotify("DENIED: User ID already taken.", 'default');
             } else if (result.message === 'EMAIL_EXISTS') {
-                showNotify("Email already registered.", 'default');
+                showNotify("DENIED: Email already registered.", 'default');
             } else if (result.error) {
-                showNotify("Server offline / Network error.", 'default');
+                showNotify("NETWORK: Server offline / No internet.", 'default');
             } else {
-                showNotify(`Error: ${result.message || 'Unknown failure!'}`, 'default');
+                showNotify(`ERROR: ${result.message || 'Unknown failure!'}`, 'default');
             }
             isSubmitting = false;
         }
 
     } catch (err) {
-        showNotify("Connection failed. Check network.", 'default');
+        showNotify("CRITICAL: Connection failed.", 'default');
         isSubmitting = false;
     }
 });
@@ -275,14 +289,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const ageDisplay = document.getElementById('age-display');
     const submitBtn = document.getElementById('submit-signup');
     const nowYear = new Date().getFullYear();
-
     for (let y = nowYear; y >= nowYear - 100; y--) {
         const opt = document.createElement('option');
         opt.value = y;
         opt.textContent = y;
         birthYear.appendChild(opt);
     }
-
     function getDaysInMonth(m, y) {
         return new Date(y, m, 0).getDate();
     }
@@ -312,7 +324,6 @@ document.addEventListener('DOMContentLoaded', () => {
             submitBtn.classList.remove('active');
             return;
         }
-        
         const birth = new Date(y, m - 1, d);
         const today = new Date();
         let age = today.getFullYear() - birth.getFullYear();
@@ -322,9 +333,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (age >= 13 && age <= 120) {
             ageDisplay.className = 'age-value valid';
             submitBtn.classList.add('active');
+            showNotify(`AGE OK: ${age} years old • Eligible`, 'success');
         } else {
             ageDisplay.className = 'age-value invalid';
             submitBtn.classList.remove('active');
+            if (age < 13) showNotify(`REJECTED: Too young (Min 13)`, 'default');
+            if (age > 120) showNotify(`REJECTED: Exceeds limit (Max 120)`, 'default');
         }
     }
     birthMonth.addEventListener('change', updateDays);
@@ -333,10 +347,10 @@ document.addEventListener('DOMContentLoaded', () => {
     submitBtn.addEventListener('click', (e) => {
         e.preventDefault();
         if (submitBtn.classList.contains('active')) {
-            showNotify("Starting registration...", 'info');
+            showNotify("Starting registration process...", 'info');
             finalSubmit();
         } else {
-            showNotify("Complete all fields correctly first!", 'warning');
+            showNotify("CANNOT SUBMIT: Complete all fields first!", 'warning');
         }
     });
 });
