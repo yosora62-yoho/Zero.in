@@ -97,14 +97,14 @@ const UserDB = {
         }
     },
     async create(userObj) {
-        const { systemId, ...safeData } = userObj;
+        const { systemId, _private_contact, _hidden_items, ...safeData } = userObj;
         const { error } = await supabase
             .from('Zero.in-users')
             .insert([safeData]);
         if (error) throw error;
     },
     async updateByEmail(email, userObj) {
-        const { systemId, ...safeData } = userObj;
+        const { systemId, _private_contact, _hidden_items, ...safeData } = userObj;
         const { error } = await supabase
             .from('Zero.in-users')
             .update(safeData)
@@ -115,7 +115,6 @@ const UserDB = {
 function createServer(port) {
     const app = express();
     app.disable('x-powered-by');
-
     app.use(helmet({ 
         crossOriginResourcePolicy: { policy: "cross-origin" },
         crossOriginEmbedderPolicy: false,
@@ -187,7 +186,7 @@ function createServer(port) {
             }
             const allowedDomains = [
                 '@gmail.com', '@outlook.com', '@hotmail.com', '@icloud.com',
-                '@proton.me", "@yahoo.com', '@protonmail.com', '@zoho.com',
+                '@proton.me', '@yahoo.com', '@protonmail.com', '@zoho.com',
                 '@yandex.com', '@mail.ru', '@163.com', '@qq.com', '@facebook.com',
                 '@github.com', '@tiktok.com', '@discord.com', '@wechat.com'
             ];
@@ -220,9 +219,7 @@ function createServer(port) {
                 cover: null,
                 stats: { following: 0, followers: 0, friends: 0 },
                 counts: { posts: 0, comments: 0, reposts: 0, likes: 0, saves: 0 },
-                privacy: { posts: false, comments: false, reposts: false, likes: false, saves: false },
-                _private_contact: null,
-                _hidden_items: null
+                privacy: { posts: false, comments: false, reposts: false, likes: false, saves: false }
             };
             await UserDB.create(newUser);
             res.json({ status: 1, message: "Step 1 Success!", userId });
@@ -275,9 +272,7 @@ function createServer(port) {
                 counts: { posts: 0, comments: 0, reposts: 0, likes: 0, saves: 0 },
                 privacy: { posts: false, comments: false, reposts: false, likes: false, saves: false },
                 completed: true,
-                completed_at: new Date().toISOString(),
-                _private_contact: null,
-                _hidden_items: null
+                completed_at: new Date().toISOString()
             };
             if (existing.length > 0) {
                 await UserDB.updateByEmail(email, userData);
