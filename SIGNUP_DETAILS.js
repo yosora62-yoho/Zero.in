@@ -12,10 +12,13 @@ async function sendToAllServers(endpoint, payload) {
             },
             mode: "cors",
             body: JSON.stringify(payload)
-        }).then(res => res.ok ? res.json() : ({ status: -1 })).catch(() => ({ status: -1 }))
+        }).then(res => {
+            if (!res.ok) throw new Error("Server error");
+            return res.json();
+        }).catch(() => ({ status: -1, message: "Server unreachable" }))
     );
     const results = await Promise.all(promises);
-    return results.find(r => r && r.status !== undefined) || { status: -1, message: "No response from server" };
+    return results.find(r => r && typeof r.status !== 'undefined') || { status: -1, message: "No response from server" };
 }
 
 function showNotify(message) {
