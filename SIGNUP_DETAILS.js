@@ -7,7 +7,7 @@ async function sendToAllServers(endpoint, payload) {
         const cleanBase = base.endsWith('/') ? base.slice(0, -1) : base;
         const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
         const fullUrl = `${cleanBase}${cleanEndpoint}`;
-        console.log("Trying to connect:", fullUrl);
+        console.log("ส่งไปที่:", fullUrl);
         return fetch(fullUrl, {
             method: "POST",
             headers: { 
@@ -16,12 +16,11 @@ async function sendToAllServers(endpoint, payload) {
             },
             body: JSON.stringify(payload)
         }).then(async res => {
-            if (!res.ok) throw new Error(`HTTP error: ${res.status}`);
-            const data = await res.json();
-            console.log("✔ Success from:", fullUrl, "→", data);
+            const data = await res.json().catch(() => ({ status: -1, message: "Invalid response" }));
+            console.log("✔ ได้คำตอบ:", data);
             return data;
         }).catch(err => {
-            console.error("✖ Failed:", fullUrl, "→", err.message);
+            console.error("️⚠︎ ล้มเหลว:", err.message);
             return null;
         });
     });
@@ -50,11 +49,9 @@ function showNotify(message) {
         setTimeout(() => box.remove(), 500);
     }, 3000);
 }
-
 if (!localStorage.getItem('signup_data')) {
     window.location.replace('SIGNUP.html');
 }
-
 history.pushState(null, null, location.href);
 window.onpopstate = () => {
     history.go(-2); 
@@ -140,6 +137,7 @@ async function finalSubmit() {
     if (!birthMonth || !birthDay || !birthYear) { showNotify("Please select your complete birth date."); isSubmitting=false; return; }
     if (ageNum < 13 || ageNum > 120) { showNotify("Age must be between 13 and 120 years to register."); isSubmitting=false; return; }
     const birthday = `${birthYear}-${birthMonth.padStart(2, '0')}-${birthDay.padStart(2, '0')}`;
+
     try {
         showNotify("Please wait...");
         const instantRes = await sendToAllServers('/api/auth/register-instant', {
@@ -148,7 +146,13 @@ async function finalSubmit() {
             email,
             provider: 'normal'
         });
-        console.log("Step 1:", instantRes);
+
+        console.log(" Step 1 Result:", instantRes);
+        if (!instantRes || instantRes.status === -1) {
+            showNotify("✖ Cannot connect to server. Check network or try again.");
+            isSubmitting = false;
+            return;
+        }
         if (instantRes.message === 'Already registered, redirecting...') {
             showNotify("This email is already registered.");
             isSubmitting = false;
@@ -169,7 +173,6 @@ async function finalSubmit() {
             isSubmitting = false;
             return;
         }
-
         const systemId = generateSystemId();
         const fullRes = await sendToAllServers('/api/auth/register-full', {
             displayName,
@@ -181,7 +184,7 @@ async function finalSubmit() {
             age: ageNum
         });
 
-        console.log("Step 2:", fullRes);
+        console.log(" Step 2 Result:", fullRes);
         if (fullRes.status === 1) {
             showNotify(`✔ Registration successful! Welcome • Your ID: #${systemId}`);
             setTimeout(() => window.location.href = 'home.html', 1800);
@@ -202,7 +205,7 @@ async function finalSubmit() {
 
     } catch (err) {
         showNotify("✖ Server connection failed. Please try again later");
-        console.error(err);
+        console.error("️⚠︎ Error:", err);
         isSubmitting = false;
     }
 }
@@ -220,11 +223,9 @@ document.addEventListener('DOMContentLoaded', () => {
         opt.textContent = y;
         birthYear.appendChild(opt);
     }
-
     function getDaysInMonth(m, y) {
         return new Date(y, m, 0).getDate();
     }
-
     function updateDays() {
         const m = parseInt(birthMonth.value) || 0;
         const y = parseInt(birthYear.value) || 0;
@@ -239,7 +240,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         calculateAge();
     }
-
     function calculateAge() {
         const m = parseInt(birthMonth.value);
         const d = parseInt(birthDay.value);
