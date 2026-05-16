@@ -15,7 +15,7 @@ async function sendToAllServers(endpoint, payload) {
         }).then(res => res.ok ? res.json() : ({ status: -1 })).catch(() => ({ status: -1 }))
     );
     const results = await Promise.all(promises);
-    return results.find(r => r && (r.status === 1 || r.status === 0)) || results[0] || { status: -1, message: "No response from server" };
+    return results.find(r => r && r.status !== undefined) || { status: -1, message: "No response from server" };
 }
 
 function showNotify(message) {
@@ -53,7 +53,6 @@ window.onload = () => {
     const userIdInput = document.getElementById('user-id');
     const emailInput = document.getElementById('display-email');
     let hasShownWelcomeNote = false;
-
     if (rawData) {
         try {
             const data = JSON.parse(rawData);
@@ -131,26 +130,33 @@ async function finalSubmit() {
 
     try {
         showNotify("Please wait...");
-        const instantRes = await sendToAllServers('/api/auth/register-instant', {
+        const instantRes = await sendToAllServers('/api/auth/zero-register', {
             displayName,
             userId,
             email,
-            provider: 'normal'
+            provider: 'Zero.in'
         });
+
+        console.log("Step 1:", instantRes);
         if (instantRes.message === 'Already registered, redirecting...') {
             showNotify("This email is already registered.");
             isSubmitting = false;
             return;
         }
+        if (instantRes.message === 'Invalid endpoint.') {
+            showNotify("✖ API Path not found. Check backend route.");
+            isSubmitting = false;
+            return;
+        }
 
-        if (instantRes.status !== 1 && instantRes.status !== 0 && !instantRes.message?.includes('Success')) {
-            showNotify("✖ " + (instantRes.message || "Failed step 1. Please try again."));
+        if (instantRes.status !== 1 && !instantRes.message?.includes('Success')) {
+            showNotify("✖ " + (instantRes.message || "Failed step 1."));
             isSubmitting = false;
             return;
         }
 
         const systemId = generateSystemId();
-        const fullRes = await sendToAllServers('/api/auth/register-full', {
+        const fullRes = await sendToAllServers('/api/auth/zero-register-full', {
             displayName,
             userId,
             systemId,
@@ -160,6 +166,7 @@ async function finalSubmit() {
             age: ageNum
         });
 
+        console.log("Step 2:", fullRes);
         if (fullRes.status === 1) {
             showNotify(`✔ Registration successful! Welcome • Your ID: #${systemId}`);
             setTimeout(() => window.location.href = 'home.html', 1800);
@@ -173,7 +180,7 @@ async function finalSubmit() {
             } else if (fullRes.message === 'EMAIL_EXISTS') {
                 showNotify("This email is already registered.");
             } else {
-                showNotify("✖ " + (fullRes.message || "An error occurred. Please try again later."));
+                showNotify("✖ " + (fullRes.message || "An error occurred."));
             }
             isSubmitting = false;
         }
