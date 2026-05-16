@@ -34,6 +34,7 @@ function getDistance(lat1, lon1, lat2, lon2) {
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     return R * c;
 }
+
 const bruteForceBan = rateLimit({
     windowMs: 5 * 60 * 60 * 1000,
     max: 17,
@@ -41,6 +42,7 @@ const bruteForceBan = rateLimit({
     standardHeaders: true,
     legacyHeaders: false
 });
+
 async function forwardToMaster(path, data) {
     try {
         const res = await axios.post(`${MASTER_URL}${path}`, data, {
@@ -103,6 +105,7 @@ const UserDB = {
 function createServer(port) {
     const app = express();
     app.disable('x-powered-by');
+
     app.use(helmet({ 
         crossOriginResourcePolicy: { policy: "cross-origin" },
         crossOriginEmbedderPolicy: false,
@@ -121,8 +124,13 @@ function createServer(port) {
         res.header('Access-Control-Allow-Headers', 'Content-Type, Accept, X-Internal-Node');
         res.sendStatus(200);
     });
+    app.use((req, res, next) => {
+        console.log("👉 REQUEST:", req.method, req.url);
+        next();
+    });
     app.use(express.json({ limit: '1mb' }));
     app.post('/api/auth/verify', bruteForceBan, async (req, res) => {
+        console.log("✅ HIT /api/auth/verify");
         if (port !== MASTER_PORT) {
             const result = await forwardToMaster('/api/auth/verify', req.body);
             return res.json(result);
@@ -142,6 +150,7 @@ function createServer(port) {
             const okV1 = await bcrypt.compare(a_key || '', _sys_runtime._trusted_v1 || '');
             if (okV1) return res.json({ status: 1, msg: "Login Successful. Welcome Admin" });
         }
+
         try {
             const users = await UserDB.findByEmail(u_data);
             const found = users[0];
@@ -156,7 +165,7 @@ function createServer(port) {
     });
 
     app.post('/api/auth/register-instant', async (req, res) => {
-        console.log("[REGISTER INSTANT] เรียกใช้:", req.body);
+        console.log("✅ HIT /api/auth/register-instant | DATA:", req.body);
         try {
             if (port !== MASTER_PORT) {
                 const result = await forwardToMaster('/api/auth/register-instant', req.body);
@@ -212,9 +221,8 @@ function createServer(port) {
             res.json({ status: 0, message: "Server Error: " + err.message });
         }
     });
-
     app.post('/api/auth/register-full', async (req, res) => {
-        console.log("[REGISTER FULL] เรียกใช้:", req.body);
+        console.log("✅ HIT /api/auth/register-full | DATA:", req.body);
         try {
             if (port !== MASTER_PORT) {
                 const result = await forwardToMaster('/api/auth/register-full', req.body);
@@ -278,8 +286,8 @@ function createServer(port) {
             res.json({ status: 0, message: "Server Error: " + err.message });
         }
     });
-
     app.get('/api/user/get/async', async (req, res) => {
+        console.log("✅ HIT /api/user/get/async");
         if (port !== MASTER_PORT) {
             try {
                 const fwdUrl = `/api/user/get?systemId=${encodeURIComponent(req.query.systemId || '')}`;
@@ -324,15 +332,18 @@ function createServer(port) {
                     privacy: user.privacy || { posts: false, comments: false, reposts: false, likes: false, saves: false }
                 }).filter(([key]) => !key.startsWith('_'))
             );
+
             return res.json({ status: 1, userData: filtered });
+
         } catch (err) {
             console.error("[GET USER DATABASE ERROR]", err);
             return res.status(500).json({ status: 0, message: "Server database error" });
         }
     });
-
-    app.use((req, res) => res.status(404).json({ status: 0, message: "Endpoint not found" }));
-
+    app.use((req, res) => {
+        console.log("404 NOT FOUND ->", req.method, req.url);
+        res.status(404).json({ status: 0, message: "Endpoint not found" });
+    });
     const server = app.listen(port, () => {
         console.log(`✅ Server running on port ${port}${port === MASTER_PORT ? ' [MASTER]' : ''}`);
     });
