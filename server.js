@@ -105,25 +105,23 @@ function createServer(port) {
     app.disable('x-powered-by');
     app.use(helmet({ 
         crossOriginResourcePolicy: { policy: "cross-origin" },
-        crossOriginEmbedderPolicy: false
+        crossOriginEmbedderPolicy: false,
+        originAgentCluster: false
     }));
-
     app.use(cors({ 
         origin: "*",
         methods: ["GET", "POST", "OPTIONS"],
         allowedHeaders: ["Content-Type", "Accept", "X-Internal-Node"],
-        credentials: false
+        credentials: false,
+        preflightContinue: false
     }));
-    
     app.options('*', (req, res) => {
         res.header('Access-Control-Allow-Origin', '*');
         res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-        res.header('Access-Control-Allow-Headers', 'Content-Type, Accept');
+        res.header('Access-Control-Allow-Headers', 'Content-Type, Accept, X-Internal-Node');
         res.sendStatus(200);
     });
-
     app.use(express.json({ limit: '1mb' }));
-
     app.post('/api/auth/verify', bruteForceBan, async (req, res) => {
         if (port !== MASTER_PORT) {
             const result = await forwardToMaster('/api/auth/verify', req.body);
@@ -156,8 +154,8 @@ function createServer(port) {
             return res.status(500).json({ status: 0, msg: "Server Error" });
         }
     });
-
     app.post('/api/auth/register-instant', async (req, res) => {
+        console.log("[REGISTER INSTANT] เรียกใช้งาน:", req.body);
         if (port !== MASTER_PORT) {
             const result = await forwardToMaster('/api/auth/register-instant', req.body);
             return res.json(result);
@@ -170,7 +168,6 @@ function createServer(port) {
             '@github.com', '@tiktok.com', '@discord.com', '@wechat.com'
         ];
         const validEmail = allowedDomains.some(d => email?.toLowerCase().endsWith(d)) || provider !== 'normal';
-
         if (!email || !validEmail) {
             return res.json({ status: 0, message: "Abnormal Email" });
         }
@@ -211,8 +208,8 @@ function createServer(port) {
             res.status(500).json({ status: 0, message: "Server Error" });
         }
     });
-
     app.post('/api/auth/register-full', async (req, res) => {
+        console.log("[REGISTER FULL] เรียกใช้งาน:", req.body);
         if (port !== MASTER_PORT) {
             const result = await forwardToMaster('/api/auth/register-full', req.body);
             return res.json(result);
@@ -273,7 +270,6 @@ function createServer(port) {
             res.status(200).json({ status: 0, message: "Server Error: " + err.message });
         }
     });
-
     app.get('/api/user/get/async', async (req, res) => {
         if (port !== MASTER_PORT) {
             try {
@@ -325,7 +321,7 @@ function createServer(port) {
             return res.status(500).json({ status: 0, message: "Server database error" });
         }
     });
-    app.use((req, res) => res.status(401).json({ status: 0, message: "Invalid endpoint." }));
+    app.use((req, res) => res.status(404).json({ status: 0, message: "Endpoint not found" }));
     const server = app.listen(port, () => {
         console.log(`✅ Server running on port ${port}${port === MASTER_PORT ? ' [MASTER]' : ''}`);
     });
