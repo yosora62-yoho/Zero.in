@@ -1,7 +1,6 @@
 const API_SERVERS = [
     "https://zero-in-backend.onrender.com"
 ];
-
 async function sendToAllServers(endpoint, payload) {
     const promises = API_SERVERS.map(base =>
         fetch(`${base}${endpoint}`, {
@@ -17,59 +16,27 @@ async function sendToAllServers(endpoint, payload) {
     const results = await Promise.all(promises);
     return results.find(r => r?.status === 1) || results[0];
 }
-let activeNotify = null;
 function showNotify(message) {
     const container = document.getElementById('notify-container');
     if (!container) return;
-    if (activeNotify) {
-        activeNotify.remove();
-        activeNotify = null;
-    }
-
     const box = document.createElement('div');
     box.className = 'notify-box';
     box.innerText = message;
-    box.style.cssText = `
-        position: relative;
-        width: 92%;
-        max-width: 520px;
-        margin: 12px auto 20px auto;
-        padding: 10px 16px;
-        border-radius: 6px;
-        background: rgba(0,0,0,0.92);
-        color: #fff;
-        border: 1px solid #666;
-        font-size: 14px;
-        line-height: 1.4;
-        text-align: center;
-        z-index: 9999;
-        box-sizing: border-box;
-    `;
-
     container.appendChild(box);
-    activeNotify = box;
-
     setTimeout(() => {
-        if (activeNotify === box) {
-            box.style.opacity = '0';
-            box.style.transition = 'opacity 0.5s ease';
-            setTimeout(() => {
-                box.remove();
-                if (activeNotify === box) activeNotify = null;
-            }, 500);
-        }
+        box.style.opacity = '0';
+        box.style.transition = 'opacity 0.5s ease';
+        setTimeout(() => box.remove(), 500);
     }, 3000);
 }
 
 if (!localStorage.getItem('signup_data')) {
     window.location.replace('SIGNUP.html');
 }
-
 history.pushState(null, null, location.href);
 window.onpopstate = () => {
     history.go(-2); 
 };
-
 window.onload = () => {
     const rawData = localStorage.getItem('signup_data');
     const displayInput = document.getElementById('display-name');
@@ -100,11 +67,9 @@ window.onload = () => {
         window.location.replace('SIGNUP.html');
     }
 };
-
 window.onunload = () => {
     localStorage.removeItem('signup_data');
 };
-
 function checkPasswordStrength(pass) {
     const minLen = pass.length >= 8;
     const hasUpper = /[A-Z]/.test(pass);
@@ -113,17 +78,14 @@ function checkPasswordStrength(pass) {
     const hasSpecial = /[!@#$%^&*]/.test(pass);
     return minLen && hasUpper && hasLower && hasNumber && hasSpecial;
 }
-
 function togglePass(id, el) {
     const input = document.getElementById(id);
     el.classList.toggle('active');
     input.type = input.type === 'password' ? 'text' : 'password';
 }
-
 function generateSystemId() {
     return Math.floor(1000000 + Math.random() * 9000000).toString();
 }
-
 let isSubmitting = false;
 async function finalSubmit() {
     if (isSubmitting) return;
