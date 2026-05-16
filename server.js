@@ -78,12 +78,12 @@ const UserDB = {
         const { data, error } = await supabase
             .from('Zero.in-users')
             .select('email, userId, systemId')
-            .or(`email.ilike.%${email}%,userId.eq.${userId},systemId.eq.${systemId}`);
+            .or(`email.ilike.%${email}%,userId.eq.${userId},systemId.eq.${systemId || 'NULL'}`);
         if (error) throw error;
         return {
-            emailExists: data?.some(u => u.email?.toLowerCase() === email?.toLowerCase()) || false,
-            userIdExists: data?.some(u => u.userId === userId) || false,
-            systemIdExists: data?.some(u => u.systemId === systemId) || false
+            emailExists: Array.isArray(data) && data.some(u => u.email?.toLowerCase() === email?.toLowerCase()),
+            userIdExists: Array.isArray(data) && data.some(u => u.userId === userId),
+            systemIdExists: Array.isArray(data) && systemId && data.some(u => u.systemId === systemId)
         };
     },
     async create(userObj) {
@@ -154,24 +154,28 @@ function createServer(port) {
             return res.status(500).json({ status: 0, msg: "Server Error" });
         }
     });
+
     app.post('/api/auth/register-instant', async (req, res) => {
-        console.log("[REGISTER INSTANT] เรียกใช้งาน:", req.body);
-        if (port !== MASTER_PORT) {
-            const result = await forwardToMaster('/api/auth/register-instant', req.body);
-            return res.json(result);
-        }
-        const { displayName, userId, email, provider = 'normal' } = req.body;
-        const allowedDomains = [
-            '@gmail.com', '@outlook.com', '@hotmail.com', '@icloud.com',
-            '@proton.me', '@yahoo.com', '@protonmail.com', '@zoho.com',
-            '@yandex.com', '@mail.ru', '@163.com', '@qq.com', '@facebook.com',
-            '@github.com', '@tiktok.com', '@discord.com', '@wechat.com'
-        ];
-        const validEmail = allowedDomains.some(d => email?.toLowerCase().endsWith(d)) || provider !== 'normal';
-        if (!email || !validEmail) {
-            return res.json({ status: 0, message: "Abnormal Email" });
-        }
+        console.log("[REGISTER INSTANT] เรียกใช้:", req.body);
         try {
+            if (port !== MASTER_PORT) {
+                const result = await forwardToMaster('/api/auth/register-instant', req.body);
+                return res.json(result);
+            }
+            const { displayName, userId, email, provider = 'normal' } = req.body;
+            if (!displayName || !userId || !email) {
+                return res.json({ status: 0, message: "Missing required fields" });
+            }
+            const allowedDomains = [
+                '@gmail.com', '@outlook.com', '@hotmail.com', '@icloud.com',
+                '@proton.me', '@yahoo.com', '@protonmail.com', '@zoho.com',
+                '@yandex.com', '@mail.ru', '@163.com', '@qq.com', '@facebook.com',
+                '@github.com', '@tiktok.com', '@discord.com', '@wechat.com'
+            ];
+            const validEmail = allowedDomains.some(d => email?.toLowerCase().endsWith(d)) || provider !== 'normal';
+            if (!validEmail) {
+                return res.json({ status: 0, message: "Abnormal Email" });
+            }
             const dup = await UserDB.checkDuplicate({ email, userId });
             if (dup.emailExists) return res.json({ status: 1, message: "Already registered, redirecting...", userId });
             if (dup.userIdExists) return res.json({ status: 0, message: "USER_ID_EXISTS" });
@@ -205,25 +209,29 @@ function createServer(port) {
             res.json({ status: 1, message: "Step 1 Success!", userId });
         } catch (err) {
             console.error('[REGISTER INSTANT ERROR]', err);
-            res.status(500).json({ status: 0, message: "Server Error" });
+            res.json({ status: 0, message: "Server Error: " + err.message });
         }
     });
+
     app.post('/api/auth/register-full', async (req, res) => {
-        console.log("[REGISTER FULL] เรียกใช้งาน:", req.body);
-        if (port !== MASTER_PORT) {
-            const result = await forwardToMaster('/api/auth/register-full', req.body);
-            return res.json(result);
-        }
-        const { displayName, userId, systemId, email, password, birthday, age, backup_email, gender, phone, address, country, bio } = req.body;
-        const numAge = parseInt(age);
-        if (!displayName || !userId || !systemId || !email || !password || !birthday || isNaN(numAge) || numAge < 13 || numAge > 120) {
-            return res.json({ status: 0, message: "Missing required fields or invalid age" });
-        }
-        const passRule = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{8,}$/;
-        if (!passRule.test(password)) {
-            return res.json({ status: 0, message: "Password: Min 8 chars | Must include: Uppercase, Lowercase, Number, Special (!@#$%^&*)" });
-        }
+        console.log("[REGISTER FULL] เรียกใช้:", req.body);
         try {
+            if (port !== MASTER_PORT) {
+                const result = await forwardToMaster('/api/auth/register-full', req.body);
+                return res.json(result);
+            }
+            const { displayName, userId, systemId, email, password, birthday, age, backup_email, gender, phone, address, country, bio } = req.body;
+            if (!displayName || !userId || !systemId || !email || !password || !birthday || !age) {
+                return res.json({ status: 0, message: "Missing required fields" });
+            }
+            const numAge = parseInt(age);
+            if (isNaN(numAge) || numAge < 13 || numAge > 120) {
+                return res.json({ status: 0, message: "Invalid age" });
+            }
+            const passRule = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{8,}$/;
+            if (!passRule.test(password)) {
+                return res.json({ status: 0, message: "Password: Min 8 chars | Must include: Uppercase, Lowercase, Number, Special (!@#$%^&*)" });
+            }
             const dup = await UserDB.checkDuplicate({ email, userId, systemId });
             if (dup.systemIdExists) return res.json({ status: 0, message: "SYSTEMID_EXISTS" });
             if (dup.emailExists) return res.json({ status: 0, message: "EMAIL_EXISTS" });
@@ -267,9 +275,10 @@ function createServer(port) {
             res.json({ status: 1, message: "✔  Registration complete!" });
         } catch (err) {
             console.error('[REGISTER FULL ERROR DETAIL]', err.message, err);
-            res.status(200).json({ status: 0, message: "Server Error: " + err.message });
+            res.json({ status: 0, message: "Server Error: " + err.message });
         }
     });
+
     app.get('/api/user/get/async', async (req, res) => {
         if (port !== MASTER_PORT) {
             try {
@@ -321,7 +330,9 @@ function createServer(port) {
             return res.status(500).json({ status: 0, message: "Server database error" });
         }
     });
+
     app.use((req, res) => res.status(404).json({ status: 0, message: "Endpoint not found" }));
+
     const server = app.listen(port, () => {
         console.log(`✅ Server running on port ${port}${port === MASTER_PORT ? ' [MASTER]' : ''}`);
     });
