@@ -69,35 +69,45 @@ const UserDB = {
         return data || [];
     },
     async findBySystemId(systemId) {
-        const { data, error } = await supabase
-            .from('Zero.in-users')
-            .select('*')
-            .eq('systemId', systemId);
-        if (error) throw error;
-        return data?.[0] || null;
+        try {
+            const { data, error } = await supabase
+                .from('Zero.in-users')
+                .select('*')
+                .eq('systemId', systemId);
+            if (error) throw error;
+            return data?.[0] || null;
+        } catch {
+            return null;
+        }
     },
     async checkDuplicate({ email, userId, systemId }) {
-        const { data, error } = await supabase
-            .from('Zero.in-users')
-            .select('email, userId, systemId')
-            .or(`email.ilike.%${email}%,userId.eq.${userId},systemId.eq.${systemId || 'NULL'}`);
-        if (error) throw error;
-        return {
-            emailExists: Array.isArray(data) && data.some(u => u.email?.toLowerCase() === email?.toLowerCase()),
-            userIdExists: Array.isArray(data) && data.some(u => u.userId === userId),
-            systemIdExists: Array.isArray(data) && systemId && data.some(u => u.systemId === systemId)
-        };
+        try {
+            const { data, error } = await supabase
+                .from('Zero.in-users')
+                .select('email, userId')
+                .or(`email.ilike.%${email}%,userId.eq.${userId}`);
+            if (error) throw error;
+            return {
+                emailExists: Array.isArray(data) && data.some(u => u.email?.toLowerCase() === email?.toLowerCase()),
+                userIdExists: Array.isArray(data) && data.some(u => u.userId === userId),
+                systemIdExists: false
+            };
+        } catch {
+            return { emailExists: false, userIdExists: false, systemIdExists: false };
+        }
     },
     async create(userObj) {
+        const { systemId, ...safeData } = userObj;
         const { error } = await supabase
             .from('Zero.in-users')
-            .insert([userObj]);
+            .insert([safeData]);
         if (error) throw error;
     },
     async updateByEmail(email, userObj) {
+        const { systemId, ...safeData } = userObj;
         const { error } = await supabase
             .from('Zero.in-users')
-            .update(userObj)
+            .update(safeData)
             .ilike('email', email);
         if (error) throw error;
     }
@@ -177,7 +187,7 @@ function createServer(port) {
             }
             const allowedDomains = [
                 '@gmail.com', '@outlook.com', '@hotmail.com', '@icloud.com',
-                '@proton.me', '@yahoo.com', '@protonmail.com', '@zoho.com',
+                '@proton.me", "@yahoo.com', '@protonmail.com', '@zoho.com',
                 '@yandex.com', '@mail.ru', '@163.com', '@qq.com', '@facebook.com',
                 '@github.com', '@tiktok.com', '@discord.com', '@wechat.com'
             ];
@@ -229,7 +239,7 @@ function createServer(port) {
                 return res.json(result);
             }
             const { displayName, userId, systemId, email, password, birthday, age, backup_email, gender, phone, address, country, bio } = req.body;
-            if (!displayName || !userId || !systemId || !email || !password || !birthday || !age) {
+            if (!displayName || !userId || !email || !password || !birthday || !age) {
                 return res.json({ status: 0, message: "Missing required fields" });
             }
             const numAge = parseInt(age);
@@ -249,7 +259,7 @@ function createServer(port) {
             const userData = {
                 displayName: displayName.trim(),
                 userId: userId.trim(),
-                systemId: systemId.trim(),
+                systemId: systemId?.trim() || null,
                 backup_email: backup_email?.trim() || null,
                 password: hashedPass,
                 birthday: birthday,
