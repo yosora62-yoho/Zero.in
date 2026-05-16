@@ -57,7 +57,7 @@ window.onload = () => {
     const urlParams = new URLSearchParams(window.location.hash.substring(1));
     const token = urlParams.get('access_token');
     if (token) {
-        fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        fetch('https://www.googleapis.com/oauth2/v1/userinfo?alt=json', {
             headers: { Authorization: `Bearer ${token}` }
         })
         .then(res => res.json())
@@ -162,7 +162,7 @@ const discordId = '1502643313352900748';
 const wechatId = 'b8irhkf8oi282yoz60mrlhu3o0nih7';
 function googleLogin() {
     const uri = window.location.origin;
-    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleId}&redirect_uri=${uri}&response_type=token&scope=email profile`;
+    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleId}&redirect_uri=${uri}&response_type=token&scope=email%20profile`;
     window.location.href = url;
 }
 function facebookLogin() {
@@ -184,7 +184,8 @@ function discordLogin() {
 }
 function wechatLogin() {
     const redirect = encodeURIComponent(window.location.origin);
-    window.location.href = `https://open.weixin.qq.com/connect/qrconnect?appid=${wechatId}&redirect_uri=${redirect}&response_type=code&scope=snsapi_login`;
+    const url = `https://open.weixin.qq.com/connect/qrconnect?appid=${wechatId}&redirect_uri=${redirect}&response_type=code&scope=snsapi_login`;
+    window.location.href = url;
 }
 
 function showNotify(message) {
@@ -206,4 +207,4 @@ function showNotify(message) {
         box.style.transition = 'all 0.5s ease';
         setTimeout(() => box.remove(), 500);
     }, 3000);
-    }
+}
