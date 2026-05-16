@@ -60,7 +60,7 @@ async function forwardToMaster(path, data) {
 const UserDB = {
     async findByEmail(email) {
         const { data, error } = await supabase
-            .from('Zero.in_users')
+            .from('Zero.in-users')
             .select('*')
             .ilike('email', email);
         if (error) throw error;
@@ -68,7 +68,7 @@ const UserDB = {
     },
     async findBySystemId(systemId) {
         const { data, error } = await supabase
-            .from('Zero.in_users')
+            .from('Zero.in-users')
             .select('*')
             .eq('systemId', systemId);
         if (error) throw error;
@@ -76,7 +76,7 @@ const UserDB = {
     },
     async checkDuplicate({ email, userId, systemId }) {
         const { data, error } = await supabase
-            .from('Zero.in_users')
+            .from('Zero.in-users')
             .select('email, userId, systemId')
             .or(`email.ilike.%${email}%,userId.eq.${userId},systemId.eq.${systemId}`);
         if (error) throw error;
@@ -88,13 +88,13 @@ const UserDB = {
     },
     async create(userObj) {
         const { error } = await supabase
-            .from('Zero.in_users')
+            .from('Zero.in-users')
             .insert([userObj]);
         if (error) throw error;
     },
     async updateByEmail(email, userObj) {
         const { error } = await supabase
-            .from('Zero.in_users')
+            .from('Zero.in-users')
             .update(userObj)
             .ilike('email', email);
         if (error) throw error;
