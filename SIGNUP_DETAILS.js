@@ -1,60 +1,24 @@
 const API_SERVERS = [
     "https://zero-in-backend.onrender.com"
 ];
-const SECRET_KEY = "ZeroInSecure_2026_Protected!@#";
-function encryptData(data) {
-    try {
-        const str = JSON.stringify(data);
-        let encrypted = "";
-        for (let i = 0; i < str.length; i++) {
-            encrypted += String.fromCharCode(str.charCodeAt(i) + SECRET_KEY.charCodeAt(i % SECRET_KEY.length));
-        }
-        return btoa(encrypted);
-    } catch (e) { return null; }
-}
-
-function sanitizeInput(str, isEmail = false) {
-    if (!str) return "";
-    let cleaned = str.toString()
-        .replace(/[<>\"'`;\/\\\(\)\[\]\{\}]/g, '')
-        .trim()
-        .slice(0, 100);
-    if (isEmail) {
-        cleaned = cleaned.replace(/[^a-zA-Z0-9_\-@.]/g, '');
-    }
-    return cleaned;
-}
 
 async function sendToAllServers(endpoint, payload) {
-    const securePayload = {
-        data: encryptData(payload),
-        ts: Date.now(),
-        ver: "3.0",
-        check: btoa(SECRET_KEY + Date.now().toString().slice(0, 8))
-    };
-
     const promises = API_SERVERS.map(base =>
         fetch(`${base}${endpoint}`, {
             method: "POST",
             headers: { 
                 "Content-Type": "application/json",
-                "Accept": "application/json",
-                "X-Secure-Access": "ZeroIn_Protected",
-                "X-Request-ID": btoa(Math.random().toString())
+                "Accept": "application/json"
             },
             mode: "cors",
-            credentials: "omit",
-            body: JSON.stringify(securePayload)
-        }).then(res => {
-            if (!res.ok) throw new Error(`Server error: ${res.status}`);
-            return res.json();
-        }).catch(err => ({ status: -1, error: err.message }))
+            body: JSON.stringify(payload)
+        }).then(res => res.ok ? res.json() : ({ status: -1 })).catch(() => ({ status: -1 }))
     );
     const results = await Promise.all(promises);
     return results.find(r => r?.status === 1) || results[0];
 }
 let activeNotify = null;
-function showNotify(message, type = 'default') {
+function showNotify(message) {
     const container = document.getElementById('notify-container');
     if (!container) return;
     if (activeNotify) {
@@ -65,11 +29,6 @@ function showNotify(message, type = 'default') {
     const box = document.createElement('div');
     box.className = 'notify-box';
     box.innerText = message;
-    let borderColor = '#ff4444';
-    let bgColor = 'rgba(0,0,0,0.92)';
-    if (type === 'success') borderColor = '#00ff88';
-    if (type === 'warning') borderColor = '#ffbb33';
-    if (type === 'info') borderColor = '#3399ff';
     box.style.cssText = `
         position: relative;
         width: 92%;
@@ -77,9 +36,9 @@ function showNotify(message, type = 'default') {
         margin: 12px auto 20px auto;
         padding: 10px 16px;
         border-radius: 6px;
-        background: ${bgColor};
+        background: rgba(0,0,0,0.92);
         color: #fff;
-        border: 1px solid ${borderColor};
+        border: 1px solid #666;
         font-size: 14px;
         line-height: 1.4;
         text-align: center;
@@ -93,86 +52,57 @@ function showNotify(message, type = 'default') {
     setTimeout(() => {
         if (activeNotify === box) {
             box.style.opacity = '0';
+            box.style.transition = 'opacity 0.5s ease';
             setTimeout(() => {
                 box.remove();
                 if (activeNotify === box) activeNotify = null;
-            }, 300);
+            }, 500);
         }
-    }, 3500);
+    }, 3000);
 }
 
-(function checkAccess() {
-    if (!localStorage.getItem('signup_data')) {
-        showNotify("Session expired or invalid. Redirecting...", 'warning');
-        setTimeout(() => window.location.replace('SIGNUP.html'), 1500);
-        return;
-    }
-    const ua = navigator.userAgent.toLowerCase();
-    const isPC = /windows|macintosh|linux/.test(ua) && !/android|iphone|ipad/.test(ua);
-    if (isPC) {
-        localStorage.clear();
-        showNotify("Access denied! Website is only available on mobile devices.", 'default');
-        setTimeout(() => window.location.replace('SIGNUP.html'), 2000);
-        return;
-    }
-    history.pushState(null, null, location.href);
-    window.onpopstate = () => { history.go(-2); };
-})();
+if (!localStorage.getItem('signup_data')) {
+    window.location.replace('SIGNUP.html');
+}
 
-document.addEventListener('contextmenu', e => e.preventDefault());
-document.addEventListener('keydown', e => {
-    if ((e.ctrlKey || e.metaKey || e.altKey) && (e.key === 'u' || e.key === 's' || e.key === 'i' || e.keyCode === 123)) {
-        e.preventDefault();
-        showNotify("Security protection active! View source is disabled.", 'warning');
-        return false;
-    }
-});
+history.pushState(null, null, location.href);
+window.onpopstate = () => {
+    history.go(-2); 
+};
 
 window.onload = () => {
     const rawData = localStorage.getItem('signup_data');
     const displayInput = document.getElementById('display-name');
     const userIdInput = document.getElementById('user-id');
     const emailInput = document.getElementById('display-email');
+    let hasShownWelcomeNote = false;
 
     if (rawData) {
         try {
             const data = JSON.parse(rawData);
-            if (!data.username || !data.userId || !data.email) {
-                showNotify("Incomplete data received. Please start over.", 'default');
-                localStorage.clear();
-                setTimeout(() => window.location.replace('SIGNUP.html'), 2000);
-                return;
-            }
-
-            if (data.username && displayInput) displayInput.value = sanitizeInput(data.username);
-            if (data.userId && userIdInput) userIdInput.value = sanitizeInput(data.userId);
+            if (data.username && displayInput) displayInput.value = data.username;
+            if (data.userId && userIdInput) userIdInput.value = data.userId;
             if (data.email && emailInput) {
-                emailInput.value = sanitizeInput(data.email, true).toLowerCase();
+                emailInput.value = data.email;
                 emailInput.setAttribute('readonly', true);
-                emailInput.style.opacity = '0.8';
             }
-
             localStorage.removeItem('signup_data');
             document.body.style.display = 'block';
-            document.body.style.visibility = 'visible';
-            
-            showNotify("Secure Connection Established. Ready.", 'info');
-
+            if (!hasShownWelcomeNote) {
+                showNotify("Please provide additional information");
+                hasShownWelcomeNote = true;
+            }
         } catch (err) {
-            console.error("Data error:", err);
-            showNotify("Corrupted data detected! Security block activated.", 'default');
-            localStorage.clear();
-            setTimeout(() => window.location.replace('SIGNUP.html'), 2000);
+            console.error("Parse signup data error:", err);
+            window.location.replace('SIGNUP.html');
         }
     } else {
-        showNotify("No data found. Redirecting...", 'warning');
-        setTimeout(() => window.location.replace('SIGNUP.html'), 1500);
+        window.location.replace('SIGNUP.html');
     }
 };
 
 window.onunload = () => {
-    localStorage.clear();
-    sessionStorage.clear();
+    localStorage.removeItem('signup_data');
 };
 
 function checkPasswordStrength(pass) {
@@ -181,106 +111,93 @@ function checkPasswordStrength(pass) {
     const hasLower = /[a-z]/.test(pass);
     const hasNumber = /[0-9]/.test(pass);
     const hasSpecial = /[!@#$%^&*]/.test(pass);
-    if (pass.length === 0) return 0;
-    if (!minLen) return 0;
-    if (!hasUpper || !hasLower) return 0;
-    if (!hasNumber) return 0;
-    if (!hasSpecial) return 0;
-    showNotify("Password strength: STRONG", 'success');
-    return 1;
+    return minLen && hasUpper && hasLower && hasNumber && hasSpecial;
 }
 
 function togglePass(id, el) {
     const input = document.getElementById(id);
-    if (!input) return;
     el.classList.toggle('active');
     input.type = input.type === 'password' ? 'text' : 'password';
-    if (input.type === 'text') {
-        showNotify("Password visible for 3 seconds...", 'info');
-        setTimeout(() => {
-            input.type = 'password';
-            el.classList.remove('active');
-        }, 3000);
-    }
 }
+
 function generateSystemId() {
-    const part1 = Math.floor(100000 + Math.random() * 900000);
-    const part2 = Date.now().toString(36).toUpperCase().slice(-4);
-    return `${part1}${part2}`;
+    return Math.floor(1000000 + Math.random() * 9000000).toString();
 }
+
 let isSubmitting = false;
 async function finalSubmit() {
-    if (isSubmitting) { 
-        showNotify("Please wait...", 'warning');
-        return; 
-    }
+    if (isSubmitting) return;
     isSubmitting = true;
-    const rawDisplayName = document.getElementById('display-name').value;
-    const rawUserId = document.getElementById('user-id').value;
-    const rawEmail = document.getElementById('display-email').value;
+
+    const displayName = document.getElementById('display-name').value.trim();
+    const userId = document.getElementById('user-id').value.trim();
     const password = document.getElementById('password').value.trim();
     const confirmPass = document.getElementById('confirm-password').value.trim();
-    const rawBirthMonth = document.getElementById('birth-month').value;
-    const rawBirthDay = document.getElementById('birth-day').value;
-    const rawBirthYear = document.getElementById('birth-year').value;
+    const birthMonth = document.getElementById('birth-month').value;
+    const birthDay = document.getElementById('birth-day').value;
+    const birthYear = document.getElementById('birth-year').value;
     const ageNum = parseInt(document.getElementById('age-display').textContent) || 0;
-    if (!rawDisplayName) { showNotify("ERROR: Display Name cannot be empty!", 'default'); isSubmitting=false; return; }
-    if (!rawUserId) { showNotify("ERROR: User ID is required!", 'default'); isSubmitting=false; return; }
-    if (!rawEmail) { showNotify("ERROR: Email is required!", 'default'); isSubmitting=false; return; }
-    if (!password) { showNotify("ERROR: Create Password is empty!", 'default'); isSubmitting=false; return; }
-    if (!confirmPass) { showNotify("ERROR: Confirm Password is empty!", 'default'); isSubmitting=false; return; }
-    if (!rawBirthMonth || !rawBirthDay || !rawBirthYear) { showNotify("ERROR: Complete Birth Date required!", 'default'); isSubmitting=false; return; }
-    const displayName = sanitizeInput(rawDisplayName);
-    const userId = sanitizeInput(rawUserId).toLowerCase();
-    const email = sanitizeInput(rawEmail, true).toLowerCase();
-    if (displayName.length < 2 || displayName.length > 23) { showNotify("RULE: Name 2‑23 chars only!", 'warning'); isSubmitting=false; return; }
-    if (userId.length < 4 || userId.length > 20) { showNotify("RULE: ID 4‑20 chars only!", 'warning'); isSubmitting=false; return; }
-    if (/[^a-z0-9._-]/.test(userId)) { showNotify("RULE: ID allows only: a‑z 0‑9 . _ -", 'warning'); isSubmitting=false; return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showNotify("RULE: Invalid Email format!", 'warning'); isSubmitting=false; return; }
-    if (email.length > 40) { showNotify("RULE: Email max 40 chars.", 'warning'); isSubmitting=false; return; }
+    const email = document.getElementById('display-email').value.trim();
+
+    if (!displayName) { showNotify("Display name is required. Cannot be empty."); isSubmitting=false; return; }
+    if (displayName.length < 2 || displayName.length > 23) { showNotify("Display name: 2‑23 characters only."); isSubmitting=false; return; }
+    if (/[<>;"']/.test(displayName)) { showNotify("Display name: Do not use < > \" ' ;"); isSubmitting=false; return; }
+
+    if (!userId) { showNotify("Invalid User ID. Cannot be empty."); isSubmitting=false; return; }
+    if (userId.length < 4 || userId.length > 20) { showNotify("User ID: Min 4 characters."); isSubmitting=false; return; }
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showNotify("Email: Valid format only."); isSubmitting=false; return; }
+    if (email.length > 40) { showNotify("Email: Maximum 40 characters."); isSubmitting=false; return; }
+
     if (!checkPasswordStrength(password)) { 
-        showNotify("SECURITY: Min 8 | Upper+Lower+Num+Special", 'warning'); 
+        showNotify("Password: Min 8 chars | Must include: Uppercase, Lowercase, Number, Special (!@#$%^&*)"); 
         isSubmitting=false; return; 
     }
-    if (password !== confirmPass) { showNotify("MISMATCH: Passwords do not match!", 'default'); isSubmitting=false; return; }
-    if (ageNum < 13 || ageNum > 120) { showNotify("AGE: Must be 13‑120 years.", 'default'); isSubmitting=false; return; }
-    const birthMonth = sanitizeInput(rawBirthMonth);
-    const birthDay = sanitizeInput(rawBirthDay);
-    const birthYear = sanitizeInput(rawBirthYear);
+    if (password !== confirmPass) { showNotify("Passwords do not match. Please verify your password again."); isSubmitting=false; return; }
+
+    if (!birthMonth || !birthDay || !birthYear) { showNotify("Please select your complete birth date."); isSubmitting=false; return; }
+    if (ageNum < 13 || ageNum > 120) { showNotify("Age must be between 13 and 120 years to register."); isSubmitting=false; return; }
+
     const birthday = `${birthYear}-${birthMonth.padStart(2, '0')}-${birthDay.padStart(2, '0')}`;
 
     try {
-        showNotify("CONNECTING: Sending data...", 'info');
+        showNotify("Please wait...");
+
         const systemId = generateSystemId();
         const result = await sendToAllServers('/api/auth/register-full', {
-            displayName, userId, systemId, email, password, birthday, age: ageNum
+            displayName,
+            userId,
+            systemId,
+            email,
+            password,
+            birthday,
+            age: ageNum
         });
+
         if (result.status === 1) {
-            showNotify(`SUCCESS: Account created! ID: #${systemId}`, 'success');
-            document.querySelectorAll('input').forEach(i => i.value = '');
+            showNotify(`✔ Registration successful! Welcome • Your ID: #${systemId}`);
             setTimeout(() => window.location.href = 'home.html', 1800);
         } else {
             if (result.message === 'SYSTEMID_EXISTS') {
-                showNotify("CONFLICT: ID exists. Generating new...", 'warning');
-                setTimeout(() => { finalSubmit(); }, 800);
+                showNotify("Generating unique ID... please wait");
+                setTimeout(() => { finalSubmit(); }, 700);
                 return;
             } else if (result.message === 'USER_ID_EXISTS') {
-                showNotify("DENIED: User ID already taken.", 'default');
+                showNotify("This USER ID is already taken. Please use another name.");
             } else if (result.message === 'EMAIL_EXISTS') {
-                showNotify("DENIED: Email already registered.", 'default');
-            } else if (result.error) {
-                showNotify("NETWORK: Server offline / No internet.", 'default');
+                showNotify("This email is already registered.");
             } else {
-                showNotify(`ERROR: ${result.message || 'Unknown failure!'}`, 'default');
+                showNotify("✖ " + (result.message || "An error occurred. Please try again later."));
             }
             isSubmitting = false;
         }
 
     } catch (err) {
-        showNotify("CRITICAL: Connection failed.", 'default');
+        showNotify("✖ Server connection failed. Please try again later");
+        console.error(err);
         isSubmitting = false;
     }
-});
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     const birthMonth = document.getElementById('birth-month');
@@ -289,12 +206,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const ageDisplay = document.getElementById('age-display');
     const submitBtn = document.getElementById('submit-signup');
     const nowYear = new Date().getFullYear();
+
     for (let y = nowYear; y >= nowYear - 100; y--) {
         const opt = document.createElement('option');
         opt.value = y;
         opt.textContent = y;
         birthYear.appendChild(opt);
     }
+
     function getDaysInMonth(m, y) {
         return new Date(y, m, 0).getDate();
     }
@@ -302,7 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateDays() {
         const m = parseInt(birthMonth.value) || 0;
         const y = parseInt(birthYear.value) || 0;
-        birthDay.innerHTML = '<option value="" disabled selected>Select Day</option>';
+        birthDay.innerHTML = '<option value="" disabled selected></option>';
         if (!m || !y) return calculateAge();
         const maxDay = getDaysInMonth(m, y);
         for (let d = 1; d <= maxDay; d++) {
@@ -320,7 +239,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const y = parseInt(birthYear.value);
         if (!m || !d || !y) {
             ageDisplay.textContent = '-- YEARS OLD';
-            ageDisplay.className = 'age-value invalid';
+            ageDisplay.className = 'age-value';
             submitBtn.classList.remove('active');
             return;
         }
@@ -330,27 +249,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const monDiff = today.getMonth() - birth.getMonth();
         if (monDiff < 0 || (monDiff === 0 && today.getDate() < birth.getDate())) age--;
         ageDisplay.textContent = `${age} YEARS OLD`;
-        if (age >= 13 && age <= 120) {
-            ageDisplay.className = 'age-value valid';
-            submitBtn.classList.add('active');
-            showNotify(`AGE OK: ${age} years old • Eligible`, 'success');
-        } else {
-            ageDisplay.className = 'age-value invalid';
-            submitBtn.classList.remove('active');
-            if (age < 13) showNotify(`REJECTED: Too young (Min 13)`, 'default');
-            if (age > 120) showNotify(`REJECTED: Exceeds limit (Max 120)`, 'default');
-        }
+        ageDisplay.className = age >= 13 ? 'age-value valid' : 'age-value invalid';
+        submitBtn.classList.toggle('active', age >= 13);
     }
+
     birthMonth.addEventListener('change', updateDays);
     birthYear.addEventListener('change', updateDays);
     birthDay.addEventListener('change', calculateAge);
-    submitBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        if (submitBtn.classList.contains('active')) {
-            showNotify("Starting registration process...", 'info');
-            finalSubmit();
-        } else {
-            showNotify("CANNOT SUBMIT: Complete all fields first!", 'warning');
-        }
-    });
+    submitBtn.addEventListener('click', finalSubmit);
 });
