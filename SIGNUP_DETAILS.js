@@ -3,21 +3,32 @@ const API_SERVERS = [
 ];
 
 async function sendToAllServers(endpoint, payload) {
-    const promises = API_SERVERS.map(base =>
-        fetch(`${base}${endpoint}`, {
+    const promises = API_SERVERS.map(base => {
+        const cleanBase = base.endsWith('/') ? base.slice(0, -1) : base;
+        const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+        const fullUrl = `${cleanBase}${cleanEndpoint}`;
+        console.log("Trying to connect:", fullUrl);
+        return fetch(fullUrl, {
             method: "POST",
             headers: { 
                 "Content-Type": "application/json",
                 "Accept": "application/json"
             },
             body: JSON.stringify(payload)
-        }).then(res => {
-            if (!res.ok) throw new Error("Server error");
-            return res.json();
-        }).catch(() => ({ status: -1, message: "Server unreachable" }))
-    );
+        }).then(async res => {
+            if (!res.ok) throw new Error(`HTTP error: ${res.status}`);
+            const data = await res.json();
+            console.log("✔ Success from:", fullUrl, "→", data);
+            return data;
+        }).catch(err => {
+            console.error("✖ Failed:", fullUrl, "→", err.message);
+            return null;
+        });
+    });
+
     const results = await Promise.all(promises);
-    return results.find(r => r && typeof r.status !== 'undefined') || { status: -1, message: "No response from server" };
+    const valid = results.find(r => r && typeof r.status !== 'undefined');
+    return valid || { status: -1, message: "Server unreachable" };
 }
 
 function showNotify(message) {
@@ -129,7 +140,6 @@ async function finalSubmit() {
     if (!birthMonth || !birthDay || !birthYear) { showNotify("Please select your complete birth date."); isSubmitting=false; return; }
     if (ageNum < 13 || ageNum > 120) { showNotify("Age must be between 13 and 120 years to register."); isSubmitting=false; return; }
     const birthday = `${birthYear}-${birthMonth.padStart(2, '0')}-${birthDay.padStart(2, '0')}`;
-
     try {
         showNotify("Please wait...");
         const instantRes = await sendToAllServers('/api/auth/register-instant', {
@@ -138,7 +148,6 @@ async function finalSubmit() {
             email,
             provider: 'normal'
         });
-
         console.log("Step 1:", instantRes);
         if (instantRes.message === 'Already registered, redirecting...') {
             showNotify("This email is already registered.");
