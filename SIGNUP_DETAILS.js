@@ -15,7 +15,7 @@ async function sendToAllServers(endpoint, payload) {
         }).then(res => res.ok ? res.json() : ({ status: -1 })).catch(() => ({ status: -1 }))
     );
     const results = await Promise.all(promises);
-    return results.find(r => r && r.status !== undefined) || { status: -1, message: "No response from server" };
+    return results.find(r => r && (r.status === 1 || r.status === 0)) || results[0] || { status: -1, message: "No response from server" };
 }
 
 function showNotify(message) {
@@ -24,6 +24,12 @@ function showNotify(message) {
     const box = document.createElement('div');
     box.className = 'notify-box';
     box.innerText = message;
+    box.style.cssText = `
+        padding: 10px 15px; margin: 8px auto; border-radius: 6px;
+        background: rgba(20, 20, 20, 0.9); color: #fff;
+        border: 1px solid #ff4444; font-size: 14px;
+        max-width: 90%; text-align: center;
+    `;
     container.appendChild(box);
     setTimeout(() => {
         box.style.opacity = '0';
@@ -131,14 +137,13 @@ async function finalSubmit() {
             email,
             provider: 'normal'
         });
-
-        if (instantRes.status === 0 && instantRes.message === 'Already registered, redirecting...') {
+        if (instantRes.message === 'Already registered, redirecting...') {
             showNotify("This email is already registered.");
             isSubmitting = false;
             return;
         }
 
-        if (instantRes.status !== 1) {
+        if (instantRes.status !== 1 && instantRes.status !== 0 && !instantRes.message?.includes('Success')) {
             showNotify("✖ " + (instantRes.message || "Failed step 1. Please try again."));
             isSubmitting = false;
             return;
