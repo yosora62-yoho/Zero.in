@@ -103,17 +103,27 @@ const UserDB = {
 function createServer(port) {
     const app = express();
     app.disable('x-powered-by');
-    app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
-    app.use(cors({ 
-        origin: [
-            "https://yosora62-yoho.github.io", 
-            "https://yosora62-yoho.github.io/Zero.in",
-            "http://localhost:8158", 
-            "https://zero-in-backend.onrender.com"
-        ],
-        credentials: true
+    app.use(helmet({ 
+        crossOriginResourcePolicy: { policy: "cross-origin" },
+        crossOriginEmbedderPolicy: false
     }));
+
+    app.use(cors({ 
+        origin: "*",
+        methods: ["GET", "POST", "OPTIONS"],
+        allowedHeaders: ["Content-Type", "Accept", "X-Internal-Node"],
+        credentials: false
+    }));
+    
+    app.options('*', (req, res) => {
+        res.header('Access-Control-Allow-Origin', '*');
+        res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        res.header('Access-Control-Allow-Headers', 'Content-Type, Accept');
+        res.sendStatus(200);
+    });
+
     app.use(express.json({ limit: '1mb' }));
+
     app.post('/api/auth/verify', bruteForceBan, async (req, res) => {
         if (port !== MASTER_PORT) {
             const result = await forwardToMaster('/api/auth/verify', req.body);
@@ -146,6 +156,7 @@ function createServer(port) {
             return res.status(500).json({ status: 0, msg: "Server Error" });
         }
     });
+
     app.post('/api/auth/register-instant', async (req, res) => {
         if (port !== MASTER_PORT) {
             const result = await forwardToMaster('/api/auth/register-instant', req.body);
@@ -200,6 +211,7 @@ function createServer(port) {
             res.status(500).json({ status: 0, message: "Server Error" });
         }
     });
+
     app.post('/api/auth/register-full', async (req, res) => {
         if (port !== MASTER_PORT) {
             const result = await forwardToMaster('/api/auth/register-full', req.body);
@@ -261,6 +273,7 @@ function createServer(port) {
             res.status(200).json({ status: 0, message: "Server Error: " + err.message });
         }
     });
+
     app.get('/api/user/get/async', async (req, res) => {
         if (port !== MASTER_PORT) {
             try {
