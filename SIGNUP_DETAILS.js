@@ -12,12 +12,17 @@ function encryptData(data) {
         return btoa(encrypted);
     } catch (e) { return null; }
 }
-function sanitizeInput(str) {
+
+function sanitizeInput(str, isEmail = false) {
     if (!str) return "";
-    return str.toString()
+    let cleaned = str.toString()
         .replace(/[<>\"'`;\/\\\(\)\[\]\{\}]/g, '')
         .trim()
         .slice(0, 100);
+    if (isEmail) {
+        cleaned = cleaned.replace(/[^a-zA-Z0-9_\-@.]/g, '');
+    }
+    return cleaned;
 }
 
 async function sendToAllServers(endpoint, payload) {
@@ -99,7 +104,7 @@ window.onload = () => {
             if (data.username && displayInput) displayInput.value = sanitizeInput(data.username);
             if (data.userId && userIdInput) userIdInput.value = sanitizeInput(data.userId);
             if (data.email && emailInput) {
-                emailInput.value = sanitizeInput(data.email).toLowerCase();
+                emailInput.value = sanitizeInput(data.email, true).toLowerCase();
                 emailInput.setAttribute('readonly', true);
                 emailInput.style.opacity = '0.8';
             }
@@ -154,31 +159,38 @@ let isSubmitting = false;
 async function finalSubmit() {
     if (isSubmitting) return showNotify(" Please wait...");
     isSubmitting = true;
-    const displayName = sanitizeInput(document.getElementById('display-name').value);
-    const userId = sanitizeInput(document.getElementById('user-id').value).toLowerCase();
+    const rawDisplayName = document.getElementById('display-name').value;
+    const rawUserId = document.getElementById('user-id').value;
+    const rawEmail = document.getElementById('display-email').value;
     const password = document.getElementById('password').value.trim();
     const confirmPass = document.getElementById('confirm-password').value.trim();
-    const birthMonth = sanitizeInput(document.getElementById('birth-month').value);
-    const birthDay = sanitizeInput(document.getElementById('birth-day').value);
-    const birthYear = sanitizeInput(document.getElementById('birth-year').value);
+    const rawBirthMonth = document.getElementById('birth-month').value;
+    const rawBirthDay = document.getElementById('birth-day').value;
+    const rawBirthYear = document.getElementById('birth-year').value;
     const ageNum = parseInt(document.getElementById('age-display').textContent) || 0;
-    const email = sanitizeInput(document.getElementById('display-email').value).toLowerCase();
-    if (!displayName) { showNotify("Display name is required. Cannot be empty."); isSubmitting=false; return; }
+    if (!rawDisplayName) { showNotify("Display name is required. Cannot be empty."); isSubmitting=false; return; }
+    if (!rawUserId) { showNotify("User ID is required. Cannot be empty."); isSubmitting=false; return; }
+    if (!rawEmail) { showNotify("Email address is required."); isSubmitting=false; return; }
+    if (!password) { showNotify("Create password is required."); isSubmitting=false; return; }
+    if (!confirmPass) { showNotify("Confirm password is required."); isSubmitting=false; return; }
+    if (!rawBirthMonth || !rawBirthDay || !rawBirthYear) { showNotify("Please select your complete birth date."); isSubmitting=false; return; }
+    const displayName = sanitizeInput(rawDisplayName);
+    const userId = sanitizeInput(rawUserId).toLowerCase();
+    const email = sanitizeInput(rawEmail, true).toLowerCase();
     if (displayName.length < 2 || displayName.length > 23) { showNotify("Display name: 2‑23 characters only."); isSubmitting=false; return; }
-    if (!userId) { showNotify("User ID is required. Cannot be empty."); isSubmitting=false; return; }
     if (userId.length < 4 || userId.length > 20) { showNotify("User ID: Min 4 characters."); isSubmitting=false; return; }
-    if (!email) { showNotify("Email address is required."); isSubmitting=false; return; }
+    if (/[^a-z0-9._-]/.test(userId)) { showNotify("User ID: Allowed only a‑z 0‑9 . _ -"); isSubmitting=false; return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showNotify("Email: Valid format only."); isSubmitting=false; return; }
     if (email.length > 40) { showNotify("Email: Maximum 40 characters."); isSubmitting=false; return; }
-    if (!password) { showNotify("Create password is required."); isSubmitting=false; return; }
     if (!checkPasswordStrength(password)) { 
         showNotify("Password: Min 8 chars | Must include: Uppercase, Lowercase, Number, Special (!@#$%^&*)"); 
         isSubmitting=false; return; 
     }
-    if (!confirmPass) { showNotify("Confirm password is required."); isSubmitting=false; return; }
     if (password !== confirmPass) { showNotify("Passwords do not match."); isSubmitting=false; return; }
-    if (!birthMonth || !birthDay || !birthYear) { showNotify("Please select your complete birth date."); isSubmitting=false; return; }
     if (ageNum < 13 || ageNum > 120) { showNotify("Age must be between 13 and 120 years."); isSubmitting=false; return; }
+    const birthMonth = sanitizeInput(rawBirthMonth);
+    const birthDay = sanitizeInput(rawBirthDay);
+    const birthYear = sanitizeInput(rawBirthYear);
     const birthday = `${birthYear}-${birthMonth.padStart(2, '0')}-${birthDay.padStart(2, '0')}`;
 
     try {
@@ -222,18 +234,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const ageDisplay = document.getElementById('age-display');
     const submitBtn = document.getElementById('submit-signup');
     const nowYear = new Date().getFullYear();
-
     for (let y = nowYear; y >= nowYear - 100; y--) {
         const opt = document.createElement('option');
         opt.value = y;
         opt.textContent = y;
         birthYear.appendChild(opt);
     }
-
     function getDaysInMonth(m, y) {
         return new Date(y, m, 0).getDate();
     }
-
     function updateDays() {
         const m = parseInt(birthMonth.value) || 0;
         const y = parseInt(birthYear.value) || 0;
