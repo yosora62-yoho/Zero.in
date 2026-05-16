@@ -46,7 +46,7 @@ window.onload = () => {
         })
         .catch(err => {
             console.error("Get Google profile error:", err);
-            alert("❌ ไม่สามารถดึงข้อมูลบัญชีได้ กรุณาลองใหม่อีกครั้ง");
+            alert("⚠ Failed to retrieve account information. Please try again.");
         });
     }
     setTimeout(() => {
@@ -90,7 +90,7 @@ function goToDetails() {
     }
     
     if (!email.includes('@') || email.length < 10) {
-        showNotify("Please check your Email");
+        showNotify("Please check your Email format");
         return;
     }
 
@@ -121,18 +121,15 @@ function facebookLogin() {
     const redirect = isLocal ? 'http://localhost:8158/login.html' : 'https://yosora62-yoho.github.io/';
     window.location.href = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${facebookId}&redirect_uri=${redirect}&response_type=token&scope=public_profile,email`;
 }
-
 function githubLogin() {
     const redirect_uri = window.location.origin; 
     window.location.href = `https://github.com/login/oauth/authorize?client_id=${githubId}&redirect_uri=${redirect_uri}&scope=user:email`;
 }
-
 function tiktokLogin() {
     const isLocal = window.location.hostname === 'localhost';
     const redirect = isLocal ? 'http://localhost:8158/login.html' : 'https://yosora62-yoho.github.io/';
     window.location.href = `https://www.tiktok.com/v2/auth/authorize/?client_key=${tiktokKey}&scope=user.info.basic&redirect_uri=${encodeURIComponent(redirect)}`;
 }
-
 function discordLogin() {
     const redirect = encodeURIComponent(window.location.origin);
     const url = `https://discord.com/api/oauth2/authorize?client_id=${discordId}&redirect_uri=${redirect}&response_type=token&scope=identify email`;
