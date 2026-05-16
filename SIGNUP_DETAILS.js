@@ -130,11 +130,11 @@ async function finalSubmit() {
 
     try {
         showNotify("Please wait...");
-        const instantRes = await sendToAllServers('/api/auth/zero-register', {
+        const instantRes = await sendToAllServers('/api/auth/register-instant', {
             displayName,
             userId,
             email,
-            provider: 'Zero.in'
+            provider: 'normal'
         });
 
         console.log("Step 1:", instantRes);
@@ -143,20 +143,24 @@ async function finalSubmit() {
             isSubmitting = false;
             return;
         }
-        if (instantRes.message === 'Invalid endpoint.') {
-            showNotify("✖ API Path not found. Check backend route.");
+        if (instantRes.message === 'USER_ID_EXISTS') {
+            showNotify("This USER ID is already taken. Please use another name.");
             isSubmitting = false;
             return;
         }
-
-        if (instantRes.status !== 1 && !instantRes.message?.includes('Success')) {
+        if (instantRes.message === 'Abnormal Email') {
+            showNotify("Email domain not allowed. Use @gmail.com / @outlook.com etc.");
+            isSubmitting = false;
+            return;
+        }
+        if (instantRes.status !== 1) {
             showNotify("✖ " + (instantRes.message || "Failed step 1."));
             isSubmitting = false;
             return;
         }
 
         const systemId = generateSystemId();
-        const fullRes = await sendToAllServers('/api/auth/zero-register-full', {
+        const fullRes = await sendToAllServers('/api/auth/register-full', {
             displayName,
             userId,
             systemId,
@@ -175,10 +179,10 @@ async function finalSubmit() {
                 showNotify("Generating unique ID... please wait");
                 setTimeout(() => { finalSubmit(); }, 700);
                 return;
-            } else if (fullRes.message === 'USER_ID_EXISTS') {
-                showNotify("This USER ID is already taken. Please use another name.");
             } else if (fullRes.message === 'EMAIL_EXISTS') {
                 showNotify("This email is already registered.");
+            } else if (fullRes.message === 'USER_ID_EXISTS') {
+                showNotify("This USER ID is already taken.");
             } else {
                 showNotify("✖ " + (fullRes.message || "An error occurred."));
             }
