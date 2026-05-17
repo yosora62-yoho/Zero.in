@@ -58,6 +58,7 @@ async function forwardToMaster(path, data) {
         return { status: -1, message: "Master server unreachable" };
     }
 }
+
 function generateUniqueId() {
     return Date.now().toString(36) + Math.random().toString(36).substring(2);
 }
@@ -75,17 +76,28 @@ const UserDB = {
         try {
             const { data, error } = await supabase
                 .from('Zero.in-users')
-                .select('email, userId')
+                .select('email, userId, password')
                 .or(`email.ilike.%${email}%,userId.eq.${userId}`);
             if (error) throw error;
-            return {
-                emailExists: Array.isArray(data) && data.some(u => u.email?.toLowerCase() === email?.toLowerCase()),
-                userIdExists: Array.isArray(data) && data.some(u => u.userId === userId)
-            };
+            let emailRegistered = false;
+            let userIdRegistered = false;
+            if (Array.isArray(data)) {
+                for (let u of data) {
+                    if (u.email?.toLowerCase() === email?.toLowerCase() && u.password !== 'SOCIAL_LOGIN_PENDING') {
+                        emailRegistered = true;
+                    }
+                    if (u.userId === userId && u.password !== 'SOCIAL_LOGIN_PENDING') {
+                        userIdRegistered = true;
+                    }
+                }
+            }
+
+            return { emailExists: emailRegistered, userIdExists: userIdRegistered };
         } catch {
             return { emailExists: false, userIdExists: false };
         }
     },
+
     async create(userObj) {
         const safeData = {
             id: generateUniqueId(),
@@ -99,18 +111,21 @@ const UserDB = {
             .insert([safeData]);
         if (error) throw error;
     },
+
     async updateByEmail(email, userObj) {
         const safeData = {
             displayName: userObj.displayName,
             userId: userObj.userId,
             password: userObj.password
-            
         };
         const { error } = await supabase
             .from('Zero.in-users')
             .update(safeData)
             .ilike('email', email);
         if (error) throw error;
+    },
+    async deletePending(email) {
+        await supabase.from('Zero.in-users').delete().ilike('email', email).eq('password', 'SOCIAL_LOGIN_PENDING');
     }
 };
 
@@ -198,9 +213,12 @@ function createServer(port) {
             if (!validEmail) {
                 return res.json({ status: 0, message: "Abnormal Email" });
             }
+
+            await UserDB.deletePending(email);
             const dup = await UserDB.checkDuplicate({ email, userId });
             if (dup.emailExists) return res.json({ status: 1, message: "Already registered, redirecting...", userId });
             if (dup.userIdExists) return res.json({ status: 0, message: "USER_ID_EXISTS" });
+            
             const cleanData = {
                 displayName,
                 userId,
@@ -230,6 +248,7 @@ function createServer(port) {
             if (!passRule.test(password)) {
                 return res.json({ status: 0, message: "Password: Min 8 chars | Must include: Uppercase, Lowercase, Number, Special (!@#$%^&*)" });
             }
+
             const dup = await UserDB.checkDuplicate({ email, userId });
             if (dup.emailExists) return res.json({ status: 0, message: "EMAIL_EXISTS" });
             if (dup.userIdExists) return res.json({ status: 0, message: "USER_ID_EXISTS" });
@@ -279,7 +298,7 @@ function createServer(port) {
         try {
             const { data, error } = await supabase
                 .from('Zero.in-users')
-                .select('id, displayName, userId, email')
+                .select('displayName, userId, email')
                 .eq('userId', userId);
             if (error) throw error;
             const user = data?.[0];
