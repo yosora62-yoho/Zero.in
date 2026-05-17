@@ -236,49 +236,44 @@ function createServer(port) {
     });
 
     app.post('/api/auth/register-full', async (req, res) => {
-        console.log("✅ HIT /api/auth/register-full | RECEIVED FIELDS:", Object.keys(req.body));
-        try {
-            if (port !== MASTER_PORT) {
-                const result = await forwardToMaster('/api/auth/register-full', req.body);
-                return res.json(result);
-            }
-            const { displayName, userId, email, password } = req.body;
-            if (!displayName || !userId || !email || !password) {
-                return res.json({ status: 0, message: "Missing required fields" });
-            }
-            const passRule = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{8,}$/;
-            if (!passRule.test(password)) {
-                return res.json({ status: 0, message: "Password: Min 8 chars | Must include: Uppercase, Lowercase, Number, Special (!@#$%^&*)" });
-            }
-
-            const dup = await UserDB.checkDuplicate({ email, userId });
-            if (dup.emailExists) return res.json({ status: 0, message: "EMAIL_EXISTS" });
-            if (dup.userIdExists) return res.json({ status: 0, message: "USER_ID_EXISTS" });
-            
-            const hashedPass = await bcrypt.hash(password, saltRounds);
-            const existing = await UserDB.findByEmail(email);
-            const cleanData = {
-                displayName: displayName.trim(),
-                userId: userId.trim(),
-                password: hashedPass
-            };
-            
-            if (existing.length > 0) {
-                await UserDB.updateByEmail(email, cleanData);
-            } else {
-                await UserDB.create({
-                    ...cleanData,
-                    email: email.toLowerCase().trim()
-                });
-            }
-            console.log(`✔  [MASTER ${MASTER_PORT}] Registered successfully`);
-            res.json({ status: 1, message: "✔  Registration complete!" });
-        } catch (err) {
-            console.error('[REGISTER FULL ERROR DETAIL]', err.message, err);
-            res.json({ status: 0, message: "Server encountered an error while processing your request. Please try again later." });
+    console.log("✅ HIT /api/auth/register-full | RECEIVED FIELDS:", Object.keys(req.body));
+    try {
+        if (port !== MASTER_PORT) {
+            const result = await forwardToMaster('/api/auth/register-full', req.body);
+            return res.json(result);
         }
-    });
-
+        const { displayName, userId, email, password } = req.body;
+        if (!displayName || !userId || !email || !password) {
+            return res.json({ status: 0, message: "Missing required fields" });
+        }
+        const passRule = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{8,}$/;
+        if (!passRule.test(password)) {
+            return res.json({ status: 0, message: "Password: Min 8 chars | Must include: Uppercase, Lowercase, Number, Special (!@#$%^&*)" });
+        }
+        const dup = await UserDB.checkDuplicate({ email, userId });
+        if (dup.emailExists) return res.json({ status: 0, message: "EMAIL_EXISTS" });
+        if (dup.userIdExists) return res.json({ status: 0, message: "USER_ID_EXISTS" });
+        const hashedPass = await bcrypt.hash(password, saltRounds);
+        const existing = await UserDB.findByEmail(email);
+        const cleanData = {
+            displayName: displayName.trim(),
+            userId: userId.trim(),
+            email: email.toLowerCase().trim(),
+            password: hashedPass
+        };
+        
+        if (existing.length > 0) {
+            await UserDB.updateByEmail(email, cleanData);
+        } else {
+            await UserDB.create(cleanData);
+        }
+        console.log(`✔  [MASTER ${MASTER_PORT}] Registered successfully`);
+        res.json({ status: 1, message: "✔  Registration complete!" });
+    } catch (err) {
+        console.error('[REGISTER FULL ERROR DETAIL]', err.message, err);
+        res.json({ status: 0, message: "ERROR: " + err.message }); 
+    }
+  });
     app.get('/api/user/get/async', async (req, res) => {
         console.log("✅ HIT /api/user/get/async");
         if (port !== MASTER_PORT) {
