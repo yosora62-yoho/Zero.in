@@ -46,7 +46,7 @@ async function forwardToMaster(path, data) {
     try {
         const res = await axios.post(`${MASTER_URL}${path}`, data, {
             headers: { 
-                'Content-Type": "application/json',
+                'Content-Type': 'application/json',
                 'X-Internal-Node': 'trusted-slave'
             },
             timeout: 8000,
@@ -104,7 +104,9 @@ const UserDB = {
             displayName: userObj.displayName,
             userId: userObj.userId,
             email: userObj.email,
-            password: userObj.password
+            password: userObj.password,
+            gender: userObj.gender || "",
+            status: userObj.status || "active"
         };
         const { error } = await supabase
             .from('Zero.in-users')
@@ -299,7 +301,7 @@ function createServer(port) {
             const { data, error } = await supabase
                 .from('Zero.in-users')
                 .select('displayName, userId, email')
-                .eq('userId", userId');
+                .eq('userId', userId);
             if (error) throw error;
             const user = data?.[0];
             if (!user) return res.json({ status: 0, message: "User not found" });
@@ -316,7 +318,62 @@ function createServer(port) {
             return res.status(500).json({ status: 0, message: "Server database is temporarily unavailable. Please try again later." });
         }
     });
+    app.get('/api/user/get/all', async (req, res) => {
+        console.log("✅ HIT /api/user/get/all");
+        if (port !== MASTER_PORT) {
+            try {
+                const fwdRes = await axios.get(`${MASTER_URL}/api/user/get/all`, {
+                    headers: { 'Content-Type': 'application/json', 'X-Internal-Node': 'trusted-slave' },
+                    timeout: 8000
+                });
+                return res.json(fwdRes.data);
+            } catch (err) {
+                return res.json({ status: -1, message: "Forward failed" });
+            }
+        }
+        try {
+            const { data, error } = await supabase.from('Zero.in-users').select('*');
+            if (error) throw error;
+            res.json({ status: 1, userList: data });
+        } catch (err) {
+            console.error("[GET ALL ERROR]", err);
+            res.status(500).json({ status: 0, message: err.message });
+        }
+    });
 
+    app.post('/api/user/update', async (req, res) => {
+        console.log("✅ HIT /api/user/update");
+        if (port !== MASTER_PORT) return res.json(await forwardToMaster('/api/user/update', req.body));
+        try {
+            const { id, displayName, userId, email, gender, status } = req.body;
+            if (!id) return res.json({ status: 0, message: "Missing ID" });
+
+            const { error } = await supabase.from('Zero.in-users').update({
+                displayName, userId, email, gender, status
+            }).eq('id', id);
+
+            if (error) throw error;
+            res.json({ status: 1, message: "Updated successfully" });
+        } catch (err) {
+            console.error("[UPDATE ERROR]", err);
+            res.json({ status: 0, message: err.message });
+        }
+    });
+
+    app.post('/api/user/delete', async (req, res) => {
+        console.log("✅ HIT /api/user/delete");
+        if (port !== MASTER_PORT) return res.json(await forwardToMaster('/api/user/delete', req.body));
+        try {
+            const { userId } = req.body;
+            if (!userId) return res.json({ status: 0, message: "Missing User ID" });
+            const { error } = await supabase.from('Zero.in-users').delete().eq('id', userId);
+            if (error) throw error;
+            res.json({ status: 1, message: "Deleted successfully" });
+        } catch (err) {
+            console.error("[DELETE ERROR]", err);
+            res.json({ status: 0, message: err.message });
+        }
+    });
     app.use((req, res) => {
         console.log("404 NOT FOUND ->", req.method, req.url);
         res.status(404).json({ status: 0, message: "Endpoint not found" });
