@@ -63,7 +63,7 @@ const UserDB = {
     async findByEmail(email) {
         const { data, error } = await supabase
             .from('Zero.in-users')
-            .select('*')
+            .select('displayName, userId, email, password')
             .ilike('email', email);
         if (error) throw error;
         return data || [];
@@ -84,10 +84,10 @@ const UserDB = {
         }
     },
     async create(userObj) {
-        const { displayName, userId, email, password, signup_date } = userObj;
+        const { displayName, userId, email, password } = userObj;
         const { error } = await supabase
             .from('Zero.in-users')
-            .insert([{ displayName, userId, email, password, signup_date }]);
+            .insert([{ displayName, userId, email, password }]);
         if (error) throw error;
     },
     async updateByEmail(email, userObj) {
@@ -99,7 +99,6 @@ const UserDB = {
         if (error) throw error;
     }
 };
-
 function createServer(port) {
     const app = express();
     app.disable('x-powered-by');
@@ -135,7 +134,6 @@ function createServer(port) {
         }
         const client_ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress.replace(/^::ffff:/, '');
         const { u_data, a_key, lat, lon } = req.body;
-        
         if (_sys_runtime._node_id && btoa((u_data || '').toLowerCase()) === _sys_runtime._node_id) {
             if (lat && lon) {
                 const dist = getDistance(lat, lon, MASTER_LOCATION.lat, MASTER_LOCATION.lon);
@@ -187,13 +185,11 @@ function createServer(port) {
             const dup = await UserDB.checkDuplicate({ email, userId });
             if (dup.emailExists) return res.json({ status: 1, message: "Already registered, redirecting...", userId });
             if (dup.userIdExists) return res.json({ status: 0, message: "USER_ID_EXISTS" });
-            
             const newUser = {
                 displayName,
                 userId,
                 email: email.toLowerCase(),
-                password: "SOCIAL_LOGIN_PENDING",
-                signup_date: new Date().toISOString()
+                password: "SOCIAL_LOGIN_PENDING"
             };
             await UserDB.create(newUser);
             res.json({ status: 1, message: "Step 1 Success!", userId });
@@ -202,7 +198,6 @@ function createServer(port) {
             res.json({ status: 0, message: "Server Error: " + err.message });
         }
     });
-
     app.post('/api/auth/register-full', async (req, res) => {
         console.log("✅ HIT /api/auth/register-full | DATA:", req.body);
         try {
@@ -235,8 +230,7 @@ function createServer(port) {
             } else {
                 await UserDB.create({
                     ...userData,
-                    email: email.toLowerCase().trim(),
-                    signup_date: new Date().toISOString()
+                    email: email.toLowerCase().trim()
                 });
             }
             console.log(`✔  [MASTER ${MASTER_PORT}] Registered via Supabase: @${userId} | ${email}`);
@@ -268,18 +262,16 @@ function createServer(port) {
         try {
             const { data, error } = await supabase
                 .from('Zero.in-users')
-                .select('displayName, userId, email, password, signup_date')
+                .select('displayName, userId, email, password')
                 .eq('userId', userId);
             if (error) throw error;
             const user = data?.[0];
             if (!user) return res.json({ status: 0, message: "User not found" });
-            
             const filtered = {
                 displayName: user.displayName || null,
                 userId: user.userId || null,
                 userHandle: `@zero.in.${user.userId || "user"}`,
-                email: user.email || null,
-                signup_date: user.signup_date || null
+                email: user.email || null
             };
 
             return res.json({ status: 1, userData: filtered });
