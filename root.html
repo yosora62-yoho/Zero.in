@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>./ROOT</title>
+    <link rel="stylesheet" href="root.css">
+</head>
+<body>
+    <div class="page" id="mainPage">
+        <div class="search-container">
+            <div class="search-input-wrap">
+                <img src="search.png" class="search-icon" alt="Search">
+                <input type="text" id="search-input" placeholder="ค้นหา ชื่อ หรือ ไอดี...">
+            </div>
+        </div>
+
+        <div class="tabs-container">
+            <div class="tabs-wrap">
+                <button class="tab-btn active" data-filter="all">ทั้งหมด</button>
+                <button class="tab-btn" data-filter="female">ผู้หญิง</button>
+                <button class="tab-btn" data-filter="male">ผู้ชาย</button>
+                <button class="tab-btn" data-filter="block">บล็อก</button>
+            </div>
+        </div>
+
+        <div class="data-container" id="dataContainer"></div>
+    </div>
+
+    <div class="page" id="editPage" style="display: none;">
+        <div class="edit-header">
+            <button class="back-btn" id="backFromEdit">← กลับ</button>
+            <h3>แก้ไขข้อมูลผู้ใช้</h3>
+            <button class="save-btn" id="saveData">ตกลง</button>
+        </div>
+        <textarea id="jsonEditor" spellcheck="false"></textarea>
+    </div>
+    <div class="context-menu" id="contextMenu">
+        <div class="menu-item" data-action="edit">✏️ แก้ไข</div>
+        <div class="menu-item" data-action="profile">👤 ดูโปรไฟล์</div>
+        <div class="menu-item delete" data-action="delete">🗑️ ลบผู้ใช้</div>
+    </div>
+
+    <div class="delete-confirm" id="deleteConfirm">
+        <p>พิมพ์ <strong>ลบ</strong> เพื่อยืนยัน</p>
+        <input type="text" id="deleteInput" placeholder="พิมพ์ที่นี่...">
+        <div class="confirm-buttons">
+            <button class="cancel-btn" id="cancelDelete">ยกเลิก</button>
+            <button class="confirm-btn" id="confirmDelete">ตกลง</button>
+        </div>
+    </div>
+
+    <script src="root.js"></script>
+</body>
+</html>
