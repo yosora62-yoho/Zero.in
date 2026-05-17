@@ -8,7 +8,7 @@ const axios = require('axios');
 const { createClient } = require('@supabase/supabase-js');
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey)
+const supabase = createClient(supabaseUrl, supabaseKey);
 const MASTER_LOCATION = { 
     lat: parseFloat(process.env.MASTER_LAT || 16.086278), 
     lon: parseFloat(process.env.MASTER_LON || 101.065028) 
@@ -84,21 +84,22 @@ const UserDB = {
         }
     },
     async create(userObj) {
-        const { displayName, userId, email, password, birthday, age, gender, provider, signup_date, completed, completed_at, bio, avatar, cover, stats, counts, privacy } = userObj;
+        const { displayName, userId, email, password, provider, signup_date, completed, completed_at, bio, avatar, cover, stats, counts, privacy } = userObj;
         const { error } = await supabase
             .from('Zero.in-users')
-            .insert([{ displayName, userId, email, password, birthday, age, gender, provider, signup_date, completed, completed_at, bio, avatar, cover, stats, counts, privacy }]);
+            .insert([{ displayName, userId, email, password, provider, signup_date, completed, completed_at, bio, avatar, cover, stats, counts, privacy }]);
         if (error) throw error;
     },
     async updateByEmail(email, userObj) {
-        const { displayName, userId, password, birthday, age, gender, completed, completed_at, bio, avatar, cover, stats, counts, privacy } = userObj;
+        const { displayName, userId, password, completed, completed_at, bio, avatar, cover, stats, counts, privacy } = userObj;
         const { error } = await supabase
             .from('Zero.in-users')
-            .update({ displayName, userId, password, birthday, age, gender, completed, completed_at, bio, avatar, cover, stats, counts, privacy })
+            .update({ displayName, userId, password, completed, completed_at, bio, avatar, cover, stats, counts, privacy })
             .ilike('email', email);
         if (error) throw error;
     }
 };
+
 function createServer(port) {
     const app = express();
     app.disable('x-powered-by');
@@ -186,14 +187,12 @@ function createServer(port) {
             const dup = await UserDB.checkDuplicate({ email, userId });
             if (dup.emailExists) return res.json({ status: 1, message: "Already registered, redirecting...", userId });
             if (dup.userIdExists) return res.json({ status: 0, message: "USER_ID_EXISTS" });
+            
             const newUser = {
                 displayName,
                 userId,
                 email: email.toLowerCase(),
                 password: "SOCIAL_LOGIN_PENDING",
-                birthday: null,
-                age: null,
-                gender: null,
                 provider,
                 signup_date: new Date().toISOString(),
                 completed: false,
@@ -220,13 +219,9 @@ function createServer(port) {
                 const result = await forwardToMaster('/api/auth/register-full', req.body);
                 return res.json(result);
             }
-            const { displayName, userId, email, password, birthday, age, gender, bio } = req.body;
-            if (!displayName || !userId || !email || !password || !birthday || !age) {
+            const { displayName, userId, email, password, bio } = req.body;
+            if (!displayName || !userId || !email || !password) {
                 return res.json({ status: 0, message: "Missing required fields" });
-            }
-            const numAge = parseInt(age);
-            if (isNaN(numAge) || numAge < 13 || numAge > 120) {
-                return res.json({ status: 0, message: "Invalid age" });
             }
             const passRule = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{8,}$/;
             if (!passRule.test(password)) {
@@ -238,13 +233,11 @@ function createServer(port) {
             
             const hashedPass = await bcrypt.hash(password, saltRounds);
             const existing = await UserDB.findByEmail(email);
+            
             const userData = {
                 displayName: displayName.trim(),
                 userId: userId.trim(),
                 password: hashedPass,
-                birthday: birthday,
-                age: numAge,
-                gender: gender || null,
                 bio: bio?.trim() || null,
                 avatar: null,
                 cover: null,
@@ -254,6 +247,7 @@ function createServer(port) {
                 completed: true,
                 completed_at: new Date().toISOString()
             };
+            
             if (existing.length > 0) {
                 await UserDB.updateByEmail(email, userData);
             } else {
@@ -295,7 +289,6 @@ function createServer(port) {
                 .from('Zero.in-users')
                 .select('*')
                 .eq('userId', userId);
-            
             if (error) throw error;
             const user = data?.[0];
             if (!user) return res.json({ status: 0, message: "User not found" });
@@ -304,9 +297,6 @@ function createServer(port) {
                 userId: user.userId || null,
                 userHandle: `@zero.in.${user.userId || "user"}`,
                 email: user.email || null,
-                birthday: user.birthday || null,
-                age: user.age || null,
-                gender: user.gender || null,
                 provider: user.provider || null,
                 signup_date: user.signup_date || null,
                 completed: user.completed ?? false,
@@ -318,12 +308,14 @@ function createServer(port) {
                 counts: user.counts || { posts: 0, comments: 0, reposts: 0, likes: 0, saves: 0 },
                 privacy: user.privacy || { posts: false, comments: false, reposts: false, likes: false, saves: false }
             };
+
             return res.json({ status: 1, userData: filtered });
         } catch (err) {
             console.error("[GET USER DATABASE ERROR]", err);
             return res.status(500).json({ status: 0, message: "Server database error" });
         }
     });
+
     app.use((req, res) => {
         console.log("404 NOT FOUND ->", req.method, req.url);
         res.status(404).json({ status: 0, message: "Endpoint not found" });
