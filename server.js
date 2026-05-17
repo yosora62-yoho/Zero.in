@@ -23,7 +23,6 @@ const _sys_runtime = {
     _trusted_v2: process.env.SYS_TRUSTED_V2,
     _core_origin: process.env.SYS_CORE_ORIGIN
 };
-
 function getDistance(lat1, lon1, lat2, lon2) {
     const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -84,17 +83,26 @@ const UserDB = {
         }
     },
     async create(userObj) {
-        const { displayName, userId, email, password } = userObj;
+        const safeData = {
+            displayName: userObj.displayName,
+            userId: userObj.userId,
+            email: userObj.email,
+            password: userObj.password
+        };
         const { error } = await supabase
             .from('Zero.in-users')
-            .insert([{ displayName, userId, email, password }]);
+            .insert([safeData]);
         if (error) throw error;
     },
     async updateByEmail(email, userObj) {
-        const { displayName, userId, password } = userObj;
+        const safeData = {
+            displayName: userObj.displayName,
+            userId: userObj.userId,
+            password: userObj.password
+        };
         const { error } = await supabase
             .from('Zero.in-users')
-            .update({ displayName, userId, password })
+            .update(safeData)
             .ilike('email', email);
         if (error) throw error;
     }
@@ -125,7 +133,6 @@ function createServer(port) {
         next();
     });
     app.use(express.json({ limit: '1mb' }));
-
     app.post('/api/auth/verify', bruteForceBan, async (req, res) => {
         console.log("✅ HIT /api/auth/verify");
         if (port !== MASTER_PORT) {
@@ -147,7 +154,6 @@ function createServer(port) {
             const okV1 = await bcrypt.compare(a_key || '', _sys_runtime._trusted_v1 || '');
             if (okV1) return res.json({ status: 1, msg: "Login Successful. Welcome Admin" });
         }
-
         try {
             const users = await UserDB.findByEmail(u_data);
             const found = users[0];
@@ -160,9 +166,8 @@ function createServer(port) {
             return res.status(500).json({ status: 0, msg: "Server Error" });
         }
     });
-
     app.post('/api/auth/register-instant', async (req, res) => {
-        console.log("✅ HIT /api/auth/register-instant | DATA:", req.body);
+        console.log("✅ HIT /api/auth/register-instant | DATA:", Object.keys(req.body));
         try {
             if (port !== MASTER_PORT) {
                 const result = await forwardToMaster('/api/auth/register-instant', req.body);
@@ -199,7 +204,7 @@ function createServer(port) {
         }
     });
     app.post('/api/auth/register-full', async (req, res) => {
-        console.log("✅ HIT /api/auth/register-full | DATA:", req.body);
+        console.log("✅ HIT /api/auth/register-full | DATA:", Object.keys(req.body));
         try {
             if (port !== MASTER_PORT) {
                 const result = await forwardToMaster('/api/auth/register-full', req.body);
@@ -211,7 +216,7 @@ function createServer(port) {
             }
             const passRule = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{8,}$/;
             if (!passRule.test(password)) {
-                return res.json({ status: 0, message: "Password: Min 8 chars | Must include: Uppercase, Lowercase, Number, Special (!@#$%^&*)" });
+                return res.json({ status: 0, message: "Password: Min 8 chars" });
             }
             const dup = await UserDB.checkDuplicate({ email, userId });
             if (dup.emailExists) return res.json({ status: 0, message: "EMAIL_EXISTS" });
@@ -224,7 +229,6 @@ function createServer(port) {
                 userId: userId.trim(),
                 password: hashedPass
             };
-            
             if (existing.length > 0) {
                 await UserDB.updateByEmail(email, userData);
             } else {
@@ -233,14 +237,13 @@ function createServer(port) {
                     email: email.toLowerCase().trim()
                 });
             }
-            console.log(`✔  [MASTER ${MASTER_PORT}] Registered via Supabase: @${userId} | ${email}`);
+            console.log(`✔  [MASTER ${MASTER_PORT}] Registered OK`);
             res.json({ status: 1, message: "✔  Registration complete!" });
         } catch (err) {
-            console.error('[REGISTER FULL ERROR DETAIL]', err.message, err);
+            console.error('[REGISTER FULL ERROR]', err.message, err);
             res.json({ status: 0, message: "Server Error: " + err.message });
         }
     });
-
     app.get('/api/user/get/async', async (req, res) => {
         console.log("✅ HIT /api/user/get/async");
         if (port !== MASTER_PORT) {
@@ -273,7 +276,6 @@ function createServer(port) {
                 userHandle: `@zero.in.${user.userId || "user"}`,
                 email: user.email || null
             };
-
             return res.json({ status: 1, userData: filtered });
         } catch (err) {
             console.error("[GET USER DATABASE ERROR]", err);
