@@ -58,12 +58,15 @@ async function forwardToMaster(path, data) {
         return { status: -1, message: "Master server unreachable" };
     }
 }
+function generateUniqueId() {
+    return Date.now().toString(36) + Math.random().toString(36).substring(2);
+}
 
 const UserDB = {
     async findByEmail(email) {
         const { data, error } = await supabase
             .from('Zero.in-users')
-            .select('displayName, userId, email, password')
+            .select('id, displayName, userId, email, password')
             .ilike('email', email);
         if (error) throw error;
         return data || [];
@@ -85,6 +88,7 @@ const UserDB = {
     },
     async create(userObj) {
         const safeData = {
+            id: generateUniqueId(),
             displayName: userObj.displayName,
             userId: userObj.userId,
             email: userObj.email,
@@ -100,6 +104,7 @@ const UserDB = {
             displayName: userObj.displayName,
             userId: userObj.userId,
             password: userObj.password
+            
         };
         const { error } = await supabase
             .from('Zero.in-users')
@@ -274,7 +279,7 @@ function createServer(port) {
         try {
             const { data, error } = await supabase
                 .from('Zero.in-users')
-                .select('displayName, userId, email')
+                .select('id, displayName, userId, email')
                 .eq('userId', userId);
             if (error) throw error;
             const user = data?.[0];
