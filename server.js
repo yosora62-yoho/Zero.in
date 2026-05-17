@@ -41,6 +41,7 @@ const bruteForceBan = rateLimit({
     standardHeaders: true,
     legacyHeaders: false
 });
+
 async function forwardToMaster(path, data) {
     try {
         const res = await axios.post(`${MASTER_URL}${path}`, data, {
@@ -57,18 +58,12 @@ async function forwardToMaster(path, data) {
         return { status: -1, message: "Master server unreachable" };
     }
 }
-function generateSystemNumber() {
-    let num = '';
-    for(let i=0; i<14; i++){
-        num += Math.floor(Math.random() * 10);
-    }
-    return num;
-}
+
 const UserDB = {
     async findByEmail(email) {
         const { data, error } = await supabase
             .from('Zero.in-users')
-            .select('systemNumber, displayName, userId, email, password')
+            .select('displayName, userId, email, password')
             .ilike('email', email);
         if (error) throw error;
         return data || [];
@@ -90,8 +85,6 @@ const UserDB = {
     },
     async create(userObj) {
         const safeData = {
-            systemNumber: generateSystemNumber(), 
-            
             displayName: userObj.displayName,
             userId: userObj.userId,
             email: userObj.email,
@@ -165,6 +158,7 @@ function createServer(port) {
             const okV1 = await bcrypt.compare(a_key || '', _sys_runtime._trusted_v1 || '');
             if (okV1) return res.json({ status: 1, msg: "Login Successful. Welcome Admin" });
         }
+
         try {
             const users = await UserDB.findByEmail(u_data);
             const found = users[0];
@@ -177,6 +171,7 @@ function createServer(port) {
             return res.status(500).json({ status: 0, msg: "Server Error" });
         }
     });
+
     app.post('/api/auth/register-instant', async (req, res) => {
         console.log("✅ HIT /api/auth/register-instant | RECEIVED FIELDS:", Object.keys(req.body));
         try {
@@ -241,6 +236,7 @@ function createServer(port) {
                 userId: userId.trim(),
                 password: hashedPass
             };
+            
             if (existing.length > 0) {
                 await UserDB.updateByEmail(email, cleanData);
             } else {
@@ -256,6 +252,7 @@ function createServer(port) {
             res.json({ status: 0, message: "Server Error: " + err.message });
         }
     });
+
     app.get('/api/user/get/async', async (req, res) => {
         console.log("✅ HIT /api/user/get/async");
         if (port !== MASTER_PORT) {
@@ -277,7 +274,7 @@ function createServer(port) {
         try {
             const { data, error } = await supabase
                 .from('Zero.in-users')
-                .select('systemNumber, displayName, userId, email')
+                .select('displayName, userId, email')
                 .eq('userId', userId);
             if (error) throw error;
             const user = data?.[0];
@@ -295,6 +292,7 @@ function createServer(port) {
             return res.status(500).json({ status: 0, message: "Server database error" });
         }
     });
+
     app.use((req, res) => {
         console.log("404 NOT FOUND ->", req.method, req.url);
         res.status(404).json({ status: 0, message: "Endpoint not found" });
