@@ -23,6 +23,7 @@ const _sys_runtime = {
     _trusted_v2: process.env.SYS_TRUSTED_V2,
     _core_origin: process.env.SYS_CORE_ORIGIN
 };
+
 function getDistance(lat1, lon1, lat2, lon2) {
     const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -107,6 +108,7 @@ const UserDB = {
         if (error) throw error;
     }
 };
+
 function createServer(port) {
     const app = express();
     app.disable('x-powered-by');
@@ -133,6 +135,7 @@ function createServer(port) {
         next();
     });
     app.use(express.json({ limit: '1mb' }));
+
     app.post('/api/auth/verify', bruteForceBan, async (req, res) => {
         console.log("✅ HIT /api/auth/verify");
         if (port !== MASTER_PORT) {
@@ -141,6 +144,7 @@ function createServer(port) {
         }
         const client_ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress.replace(/^::ffff:/, '');
         const { u_data, a_key, lat, lon } = req.body;
+        
         if (_sys_runtime._node_id && btoa((u_data || '').toLowerCase()) === _sys_runtime._node_id) {
             if (lat && lon) {
                 const dist = getDistance(lat, lon, MASTER_LOCATION.lat, MASTER_LOCATION.lon);
@@ -154,6 +158,7 @@ function createServer(port) {
             const okV1 = await bcrypt.compare(a_key || '', _sys_runtime._trusted_v1 || '');
             if (okV1) return res.json({ status: 1, msg: "Login Successful. Welcome Admin" });
         }
+
         try {
             const users = await UserDB.findByEmail(u_data);
             const found = users[0];
@@ -166,8 +171,9 @@ function createServer(port) {
             return res.status(500).json({ status: 0, msg: "Server Error" });
         }
     });
+
     app.post('/api/auth/register-instant', async (req, res) => {
-        console.log("✅ HIT /api/auth/register-instant | DATA:", Object.keys(req.body));
+        console.log("✅ HIT /api/auth/register-instant | RECEIVED FIELDS:", Object.keys(req.body));
         try {
             if (port !== MASTER_PORT) {
                 const result = await forwardToMaster('/api/auth/register-instant', req.body);
@@ -190,21 +196,22 @@ function createServer(port) {
             const dup = await UserDB.checkDuplicate({ email, userId });
             if (dup.emailExists) return res.json({ status: 1, message: "Already registered, redirecting...", userId });
             if (dup.userIdExists) return res.json({ status: 0, message: "USER_ID_EXISTS" });
-            const newUser = {
+            const cleanData = {
                 displayName,
                 userId,
                 email: email.toLowerCase(),
                 password: "SOCIAL_LOGIN_PENDING"
             };
-            await UserDB.create(newUser);
+            await UserDB.create(cleanData);
             res.json({ status: 1, message: "Step 1 Success!", userId });
         } catch (err) {
             console.error('[REGISTER INSTANT ERROR]', err);
             res.json({ status: 0, message: "Server Error: " + err.message });
         }
     });
+
     app.post('/api/auth/register-full', async (req, res) => {
-        console.log("✅ HIT /api/auth/register-full | DATA:", Object.keys(req.body));
+        console.log("✅ HIT /api/auth/register-full | RECEIVED FIELDS:", Object.keys(req.body));
         try {
             if (port !== MASTER_PORT) {
                 const result = await forwardToMaster('/api/auth/register-full', req.body);
@@ -216,7 +223,7 @@ function createServer(port) {
             }
             const passRule = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{8,}$/;
             if (!passRule.test(password)) {
-                return res.json({ status: 0, message: "Password: Min 8 chars" });
+                return res.json({ status: 0, message: "Password: Min 8 chars | Must include: Uppercase, Lowercase, Number, Special (!@#$%^&*)" });
             }
             const dup = await UserDB.checkDuplicate({ email, userId });
             if (dup.emailExists) return res.json({ status: 0, message: "EMAIL_EXISTS" });
@@ -224,26 +231,28 @@ function createServer(port) {
             
             const hashedPass = await bcrypt.hash(password, saltRounds);
             const existing = await UserDB.findByEmail(email);
-            const userData = {
+            const cleanData = {
                 displayName: displayName.trim(),
                 userId: userId.trim(),
                 password: hashedPass
             };
+            
             if (existing.length > 0) {
-                await UserDB.updateByEmail(email, userData);
+                await UserDB.updateByEmail(email, cleanData);
             } else {
                 await UserDB.create({
-                    ...userData,
+                    ...cleanData,
                     email: email.toLowerCase().trim()
                 });
             }
-            console.log(`✔  [MASTER ${MASTER_PORT}] Registered OK`);
+            console.log(`✔  [MASTER ${MASTER_PORT}] Registered successfully`);
             res.json({ status: 1, message: "✔  Registration complete!" });
         } catch (err) {
-            console.error('[REGISTER FULL ERROR]', err.message, err);
+            console.error('[REGISTER FULL ERROR DETAIL]', err.message, err);
             res.json({ status: 0, message: "Server Error: " + err.message });
         }
     });
+
     app.get('/api/user/get/async', async (req, res) => {
         console.log("✅ HIT /api/user/get/async");
         if (port !== MASTER_PORT) {
@@ -276,6 +285,7 @@ function createServer(port) {
                 userHandle: `@zero.in.${user.userId || "user"}`,
                 email: user.email || null
             };
+
             return res.json({ status: 1, userData: filtered });
         } catch (err) {
             console.error("[GET USER DATABASE ERROR]", err);
