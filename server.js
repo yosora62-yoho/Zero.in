@@ -23,7 +23,6 @@ const _sys_runtime = {
     _trusted_v2: process.env.SYS_TRUSTED_V2,
     _core_origin: process.env.SYS_CORE_ORIGIN
 };
-
 function getDistance(lat1, lon1, lat2, lon2) {
     const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -33,7 +32,6 @@ function getDistance(lat1, lon1, lat2, lon2) {
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     return R * c;
 }
-
 const bruteForceBan = rateLimit({
     windowMs: 5 * 60 * 60 * 1000,
     max: 17,
@@ -41,7 +39,6 @@ const bruteForceBan = rateLimit({
     standardHeaders: true,
     legacyHeaders: false
 });
-
 async function forwardToMaster(path, data) {
     try {
         const res = await axios.post(`${MASTER_URL}${path}`, data, {
@@ -67,7 +64,7 @@ const UserDB = {
     async findByEmail(email) {
         const { data, error } = await supabase
             .from('Zero.in-users')
-            .select('id, displayName, userId, email, password, gender, status')
+            .select('id, displayName, userId, email, password, gender, status, birth_day, birth_month, birth_year')
             .ilike('email', email);
         if (error) throw error;
         return data || [];
@@ -77,7 +74,7 @@ const UserDB = {
             const { data, error } = await supabase
                 .from('Zero.in-users')
                 .select('email, userId, password')
-                .or(`email.ilike.${email},userId.eq.${userId}`);
+                .or(`email.ilike.%${email}%,userId.eq.${userId}`);
             if (error) throw error;
             let emailRegistered = false;
             let userIdRegistered = false;
@@ -105,7 +102,10 @@ const UserDB = {
             email: userObj.email?.toLowerCase().trim() || "",
             password: userObj.password || "",
             gender: userObj.gender || "",
-            status: userObj.status || "active"
+            status: userObj.status || "active",
+            birth_day: userObj.birth_day || null,
+            birth_month: userObj.birth_month || null,
+            birth_year: userObj.birth_year || null
         };
         const { error } = await supabase
             .from('Zero.in-users')
@@ -117,7 +117,10 @@ const UserDB = {
             displayName: userObj.displayName?.trim() || "",
             userId: userObj.userId?.trim() || "",
             email: userObj.email?.toLowerCase().trim() || "",
-            password: userObj.password || ""
+            password: userObj.password || "",
+            birth_day: userObj.birth_day || null,
+            birth_month: userObj.birth_month || null,
+            birth_year: userObj.birth_year || null
         };
         const { error } = await supabase
             .from('Zero.in-users')
@@ -134,6 +137,7 @@ const UserDB = {
         if (error) console.error("DELETE PENDING ERROR:", error);
     }
 };
+
 function createServer(port) {
     const app = express();
     app.disable('x-powered-by');
@@ -183,7 +187,6 @@ function createServer(port) {
             const okV1 = await bcrypt.compare(a_key || '', _sys_runtime._trusted_v1 || '');
             if (okV1) return res.json({ status: 1, msg: "Login Successful. Welcome Admin" });
         }
-
         try {
             const users = await UserDB.findByEmail(u_data);
             const found = users[0];
@@ -218,12 +221,10 @@ function createServer(port) {
             if (!validEmail) {
                 return res.json({ status: 0, message: "Abnormal Email" });
             }
-
             await UserDB.deletePending(email);
             const dup = await UserDB.checkDuplicate({ email, userId });
             if (dup.emailExists) return res.json({ status: 1, message: "Already registered, redirecting...", userId });
             if (dup.userIdExists) return res.json({ status: 0, message: "USER_ID_EXISTS" });
-            
             const cleanData = {
                 displayName,
                 userId,
@@ -234,49 +235,58 @@ function createServer(port) {
             res.json({ status: 1, message: "Step 1 Success!", userId });
         } catch (err) {
             console.error('[REGISTER INSTANT ERROR]', err);
-            res.json({ status: 0, message: "Server is currently experiencing issues. Please try again in a moment." });
+            res.json({ status: 0, message: "ERROR: " + err.message });
         }
     });
-
     app.post('/api/auth/register-full', async (req, res) => {
-    console.log("✅ HIT /api/auth/register-full | RECEIVED FIELDS:", Object.keys(req.body));
-    try {
-        if (port !== MASTER_PORT) {
-            const result = await forwardToMaster('/api/auth/register-full', req.body);
-            return res.json(result);
+        console.log("✅ HIT /api/auth/register-full | RECEIVED FIELDS:", Object.keys(req.body));
+        try {
+            if (port !== MASTER_PORT) {
+                const result = await forwardToMaster('/api/auth/register-full', req.body);
+                return res.json(result);
+            }
+            const { displayName, userId, email, password, birth_day, birth_month, birth_year } = req.body;
+            if (!displayName || !userId || !email || !password || !birth_day || !birth_month || !birth_year) {
+                return res.json({ status: 0, message: "Missing required fields" });
+            }
+            const passRule = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{8,}$/;
+            if (!passRule.test(password)) {
+                return res.json({ status: 0, message: "Password: Min 8 chars | Must include: Uppercase, Lowercase, Number, Special (!@#$%^&*)" });
+            }
+            const birthDate = new Date(birth_year, birth_month - 1, birth_day);
+            const today = new Date();
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const m = today.getMonth() - birthDate.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
+            if (age < 13 || age > 120) {
+                return res.json({ status: 0, message: "Age must be between 13 and 120 years to register" });
+            }
+            const dup = await UserDB.checkDuplicate({ email, userId });
+            if (dup.emailExists) return res.json({ status: 0, message: "EMAIL_EXISTS" });
+            if (dup.userIdExists) return res.json({ status: 0, message: "USER_ID_EXISTS" });
+            const hashedPass = await bcrypt.hash(password, saltRounds);
+            const existing = await UserDB.findByEmail(email);
+            const cleanData = {
+                displayName: displayName.trim(),
+                userId: userId.trim(),
+                email: email.toLowerCase().trim(),
+                password: hashedPass,
+                birth_day: parseInt(birth_day),
+                birth_month: parseInt(birth_month),
+                birth_year: parseInt(birth_year)
+            };
+            if (existing.length > 0) {
+                await UserDB.updateByEmail(email, cleanData);
+            } else {
+                await UserDB.create(cleanData);
+            }
+            console.log(`✔  [MASTER ${MASTER_PORT}] Registered successfully`);
+            res.json({ status: 1, message: "✔  Registration complete!" });
+        } catch (err) {
+            console.error('[REGISTER FULL ERROR DETAIL]', err.message, err);
+            res.json({ status: 0, message: "ERROR: " + err.message }); 
         }
-        const { displayName, userId, email, password } = req.body;
-        if (!displayName || !userId || !email || !password) {
-            return res.json({ status: 0, message: "Missing required fields" });
-        }
-        const passRule = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{8,}$/;
-        if (!passRule.test(password)) {
-            return res.json({ status: 0, message: "Password: Min 8 chars | Must include: Uppercase, Lowercase, Number, Special (!@#$%^&*)" });
-        }
-        const dup = await UserDB.checkDuplicate({ email, userId });
-        if (dup.emailExists) return res.json({ status: 0, message: "EMAIL_EXISTS" });
-        if (dup.userIdExists) return res.json({ status: 0, message: "USER_ID_EXISTS" });
-        const hashedPass = await bcrypt.hash(password, saltRounds);
-        const existing = await UserDB.findByEmail(email);
-        const cleanData = {
-            displayName: displayName.trim(),
-            userId: userId.trim(),
-            email: email.toLowerCase().trim(),
-            password: hashedPass
-        };
-        
-        if (existing.length > 0) {
-            await UserDB.updateByEmail(email, cleanData);
-        } else {
-            await UserDB.create(cleanData);
-        }
-        console.log(`✔  [MASTER ${MASTER_PORT}] Registered successfully`);
-        res.json({ status: 1, message: "✔  Registration complete!" });
-    } catch (err) {
-        console.error('[REGISTER FULL ERROR DETAIL]', err.message, err);
-        res.json({ status: 0, message: "ERROR: " + err.message }); 
-    }
-  });
+    });
     app.get('/api/user/get/async', async (req, res) => {
         console.log("✅ HIT /api/user/get/async");
         if (port !== MASTER_PORT) {
@@ -294,11 +304,10 @@ function createServer(port) {
         }
         const { userId } = req.query;
         if (!userId) return res.json({ status: 0, message: "Missing required parameter: userId" });
-        
         try {
             const { data, error } = await supabase
                 .from('Zero.in-users')
-                .select('displayName, userId, email')
+                .select('displayName, userId, email, birth_day, birth_month, birth_year')
                 .eq('userId', userId);
             if (error) throw error;
             const user = data?.[0];
@@ -307,9 +316,9 @@ function createServer(port) {
                 displayName: user.displayName || null,
                 userId: user.userId || null,
                 userHandle: `@zero.in.${user.userId || "user"}`,
-                email: user.email || null
+                email: user.email || null,
+                birth_date: user.birth_day && user.birth_month && user.birth_year ? `${user.birth_day}/${user.birth_month}/${user.birth_year}` : null
             };
-
             return res.json({ status: 1, userData: filtered });
         } catch (err) {
             console.error("[GET USER DATABASE ERROR]", err);
@@ -338,18 +347,15 @@ function createServer(port) {
             res.status(500).json({ status: 0, message: err.message });
         }
     });
-
     app.post('/api/user/update', async (req, res) => {
         console.log("✅ HIT /api/user/update");
         if (port !== MASTER_PORT) return res.json(await forwardToMaster('/api/user/update', req.body));
         try {
-            const { id, displayName, userId, email, gender, status } = req.body;
+            const { id, displayName, userId, email, gender, status, birth_day, birth_month, birth_year } = req.body;
             if (!id) return res.json({ status: 0, message: "Missing ID" });
-
             const { error } = await supabase.from('Zero.in-users').update({
-                displayName, userId, email, gender, status
+                displayName, userId, email, gender, status, birth_day, birth_month, birth_year
             }).eq('id', id);
-
             if (error) throw error;
             res.json({ status: 1, message: "Updated successfully" });
         } catch (err) {
@@ -357,7 +363,6 @@ function createServer(port) {
             res.json({ status: 0, message: err.message });
         }
     });
-
     app.post('/api/user/delete', async (req, res) => {
         console.log("✅ HIT /api/user/delete");
         if (port !== MASTER_PORT) return res.json(await forwardToMaster('/api/user/delete', req.body));
