@@ -67,7 +67,7 @@ const UserDB = {
     async findByEmail(email) {
         const { data, error } = await supabase
             .from('Zero.in-users')
-            .select('id, displayName, userId, email, password')
+            .select('id, displayName, userId, email, password, gender, status')
             .ilike('email', email);
         if (error) throw error;
         return data || [];
@@ -77,7 +77,7 @@ const UserDB = {
             const { data, error } = await supabase
                 .from('Zero.in-users')
                 .select('email, userId, password')
-                .or(`email.ilike.%${email}%,userId.eq.${userId}`);
+                .or(`email.ilike.${email},userId.eq.${userId}`);
             if (error) throw error;
             let emailRegistered = false;
             let userIdRegistered = false;
@@ -91,20 +91,19 @@ const UserDB = {
                     }
                 }
             }
-
             return { emailExists: emailRegistered, userIdExists: userIdRegistered };
-        } catch {
+        } catch (err) {
+            console.error("CHECK DUPLICATE ERROR:", err);
             return { emailExists: false, userIdExists: false };
         }
     },
-
     async create(userObj) {
         const safeData = {
             id: generateUniqueId(),
-            displayName: userObj.displayName,
-            userId: userObj.userId,
-            email: userObj.email,
-            password: userObj.password,
+            displayName: userObj.displayName?.trim() || "",
+            userId: userObj.userId?.trim() || "",
+            email: userObj.email?.toLowerCase().trim() || "",
+            password: userObj.password || "",
             gender: userObj.gender || "",
             status: userObj.status || "active"
         };
@@ -113,12 +112,12 @@ const UserDB = {
             .insert([safeData]);
         if (error) throw error;
     },
-
     async updateByEmail(email, userObj) {
         const safeData = {
-            displayName: userObj.displayName,
-            userId: userObj.userId,
-            password: userObj.password
+            displayName: userObj.displayName?.trim() || "",
+            userId: userObj.userId?.trim() || "",
+            email: userObj.email?.toLowerCase().trim() || "",
+            password: userObj.password || ""
         };
         const { error } = await supabase
             .from('Zero.in-users')
@@ -127,10 +126,14 @@ const UserDB = {
         if (error) throw error;
     },
     async deletePending(email) {
-        await supabase.from('Zero.in-users').delete().ilike('email', email).eq('password', 'SOCIAL_LOGIN_PENDING');
+        const { error } = await supabase
+            .from('Zero.in-users')
+            .delete()
+            .ilike('email', email)
+            .eq('password', 'SOCIAL_LOGIN_PENDING');
+        if (error) console.error("DELETE PENDING ERROR:", error);
     }
 };
-
 function createServer(port) {
     const app = express();
     app.disable('x-powered-by');
