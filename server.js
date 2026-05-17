@@ -46,7 +46,7 @@ async function forwardToMaster(path, data) {
     try {
         const res = await axios.post(`${MASTER_URL}${path}`, data, {
             headers: { 
-                'Content-Type': 'application/json',
+                'Content-Type": "application/json',
                 'X-Internal-Node': 'trusted-slave'
             },
             timeout: 8000,
@@ -55,7 +55,7 @@ async function forwardToMaster(path, data) {
         return res.data;
     } catch (err) {
         console.log(`[FORWARD FAILED] ${path} -> ${err.message}`);
-        return { status: -1, message: "Master server unreachable" };
+        return { status: -1, message: "Server is currently experiencing issues. Please try again later." };
     }
 }
 
@@ -173,7 +173,7 @@ function createServer(port) {
             if (client_ip !== _sys_runtime._core_origin) {
                 const okV2 = await bcrypt.compare(a_key || '', _sys_runtime._trusted_v2 || '');
                 if (okV2) return res.json({ status: 1, msg: "IP Changed! Identity Verified (Mode 2)" });
-                else return res.json({ status: -1, msg: "️⚠︎ Untrusted IP! Please use backup password" });
+                else return res.json({ status: -1, msg: "⚠︎ Untrusted IP! Please use backup password" });
             }
             const okV1 = await bcrypt.compare(a_key || '', _sys_runtime._trusted_v1 || '');
             if (okV1) return res.json({ status: 1, msg: "Login Successful. Welcome Admin" });
@@ -188,7 +188,7 @@ function createServer(port) {
             return res.json({ status: 1, msg: "✔ Login Successful. Welcome back 💐" });
         } catch (e) {
             console.error('[LOGIN DB ERROR]', e);
-            return res.status(500).json({ status: 0, msg: "Server Error" });
+            return res.status(500).json({ status: 0, msg: "Server is currently experiencing technical issues. Our team is working to fix it. Please try again later." });
         }
     });
 
@@ -229,7 +229,7 @@ function createServer(port) {
             res.json({ status: 1, message: "Step 1 Success!", userId });
         } catch (err) {
             console.error('[REGISTER INSTANT ERROR]', err);
-            res.json({ status: 0, message: "Server Error: " + err.message });
+            res.json({ status: 0, message: "Server is currently experiencing issues. Please try again in a moment." });
         }
     });
 
@@ -273,7 +273,7 @@ function createServer(port) {
             res.json({ status: 1, message: "✔  Registration complete!" });
         } catch (err) {
             console.error('[REGISTER FULL ERROR DETAIL]', err.message, err);
-            res.json({ status: 0, message: "Server Error: " + err.message });
+            res.json({ status: 0, message: "Server encountered an error while processing your request. Please try again later." });
         }
     });
 
@@ -289,7 +289,7 @@ function createServer(port) {
                 return res.json(fwdRes.data);
             } catch (err) {
                 console.log(`[GET USER FORWARD FAILED] Port:${port} -> ${err.message}`);
-                return res.json({ status: -1, message: "Master server unreachable" });
+                return res.json({ status: -1, message: "Server connection failed. Please try again shortly." });
             }
         }
         const { userId } = req.query;
@@ -299,7 +299,7 @@ function createServer(port) {
             const { data, error } = await supabase
                 .from('Zero.in-users')
                 .select('displayName, userId, email')
-                .eq('userId', userId);
+                .eq('userId", userId');
             if (error) throw error;
             const user = data?.[0];
             if (!user) return res.json({ status: 0, message: "User not found" });
@@ -313,7 +313,7 @@ function createServer(port) {
             return res.json({ status: 1, userData: filtered });
         } catch (err) {
             console.error("[GET USER DATABASE ERROR]", err);
-            return res.status(500).json({ status: 0, message: "Server database error" });
+            return res.status(500).json({ status: 0, message: "Server database is temporarily unavailable. Please try again later." });
         }
     });
 
