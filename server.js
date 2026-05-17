@@ -84,17 +84,17 @@ const UserDB = {
         }
     },
     async create(userObj) {
-        const { displayName, userId, email, password, provider, signup_date, completed, completed_at, bio, avatar, cover, stats, counts, privacy } = userObj;
+        const { displayName, userId, email, password, signup_date } = userObj;
         const { error } = await supabase
             .from('Zero.in-users')
-            .insert([{ displayName, userId, email, password, provider, signup_date, completed, completed_at, bio, avatar, cover, stats, counts, privacy }]);
+            .insert([{ displayName, userId, email, password, signup_date }]);
         if (error) throw error;
     },
     async updateByEmail(email, userObj) {
-        const { displayName, userId, password, completed, completed_at, bio, avatar, cover, stats, counts, privacy } = userObj;
+        const { displayName, userId, password } = userObj;
         const { error } = await supabase
             .from('Zero.in-users')
-            .update({ displayName, userId, password, completed, completed_at, bio, avatar, cover, stats, counts, privacy })
+            .update({ displayName, userId, password })
             .ilike('email', email);
         if (error) throw error;
     }
@@ -170,7 +170,7 @@ function createServer(port) {
                 const result = await forwardToMaster('/api/auth/register-instant', req.body);
                 return res.json(result);
             }
-            const { displayName, userId, email, provider = 'normal' } = req.body;
+            const { displayName, userId, email } = req.body;
             if (!displayName || !userId || !email) {
                 return res.json({ status: 0, message: "Missing required fields" });
             }
@@ -180,7 +180,7 @@ function createServer(port) {
                 '@yandex.com', '@mail.ru', '@163.com', '@qq.com', '@facebook.com',
                 '@github.com', '@tiktok.com', '@discord.com', '@wechat.com'
             ];
-            const validEmail = allowedDomains.some(d => email?.toLowerCase().endsWith(d)) || provider !== 'normal';
+            const validEmail = allowedDomains.some(d => email?.toLowerCase().endsWith(d));
             if (!validEmail) {
                 return res.json({ status: 0, message: "Abnormal Email" });
             }
@@ -193,16 +193,7 @@ function createServer(port) {
                 userId,
                 email: email.toLowerCase(),
                 password: "SOCIAL_LOGIN_PENDING",
-                provider,
-                signup_date: new Date().toISOString(),
-                completed: false,
-                completed_at: null,
-                bio: null,
-                avatar: null,
-                cover: null,
-                stats: { following: 0, followers: 0, friends: 0 },
-                counts: { posts: 0, comments: 0, reposts: 0, likes: 0, saves: 0 },
-                privacy: { posts: false, comments: false, reposts: false, likes: false, saves: false }
+                signup_date: new Date().toISOString()
             };
             await UserDB.create(newUser);
             res.json({ status: 1, message: "Step 1 Success!", userId });
@@ -219,7 +210,7 @@ function createServer(port) {
                 const result = await forwardToMaster('/api/auth/register-full', req.body);
                 return res.json(result);
             }
-            const { displayName, userId, email, password, bio } = req.body;
+            const { displayName, userId, email, password } = req.body;
             if (!displayName || !userId || !email || !password) {
                 return res.json({ status: 0, message: "Missing required fields" });
             }
@@ -233,19 +224,10 @@ function createServer(port) {
             
             const hashedPass = await bcrypt.hash(password, saltRounds);
             const existing = await UserDB.findByEmail(email);
-            
             const userData = {
                 displayName: displayName.trim(),
                 userId: userId.trim(),
-                password: hashedPass,
-                bio: bio?.trim() || null,
-                avatar: null,
-                cover: null,
-                stats: { following: 0, followers: 0, friends: 0 },
-                counts: { posts: 0, comments: 0, reposts: 0, likes: 0, saves: 0 },
-                privacy: { posts: false, comments: false, reposts: false, likes: false, saves: false },
-                completed: true,
-                completed_at: new Date().toISOString()
+                password: hashedPass
             };
             
             if (existing.length > 0) {
@@ -254,7 +236,6 @@ function createServer(port) {
                 await UserDB.create({
                     ...userData,
                     email: email.toLowerCase().trim(),
-                    provider: 'normal',
                     signup_date: new Date().toISOString()
                 });
             }
@@ -287,26 +268,18 @@ function createServer(port) {
         try {
             const { data, error } = await supabase
                 .from('Zero.in-users')
-                .select('*')
+                .select('displayName, userId, email, password, signup_date')
                 .eq('userId', userId);
             if (error) throw error;
             const user = data?.[0];
             if (!user) return res.json({ status: 0, message: "User not found" });
+            
             const filtered = {
                 displayName: user.displayName || null,
                 userId: user.userId || null,
                 userHandle: `@zero.in.${user.userId || "user"}`,
                 email: user.email || null,
-                provider: user.provider || null,
-                signup_date: user.signup_date || null,
-                completed: user.completed ?? false,
-                completed_at: user.completed_at || null,
-                bio: user.bio || null,
-                avatar: user.avatar || null,
-                cover: user.cover || null,
-                stats: user.stats || { following: 0, followers: 0, friends: 0 },
-                counts: user.counts || { posts: 0, comments: 0, reposts: 0, likes: 0, saves: 0 },
-                privacy: user.privacy || { posts: false, comments: false, reposts: false, likes: false, saves: false }
+                signup_date: user.signup_date || null
             };
 
             return res.json({ status: 1, userData: filtered });
