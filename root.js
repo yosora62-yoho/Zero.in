@@ -4,21 +4,24 @@ const API_URL = "https://zero-in-backend.onrender.com";
 async function loadRealData() {
     try {
         const response = await fetch(`${API_URL}/api/user/get/all`);
-        if (!response.ok) throw new Error("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้");
+        if (!response.ok) throw new Error("❌ เชื่อมต่อเซิร์ฟเวอร์ผิดพลาด");
         const result = await response.json();
-        if (result.status === 1) {
+        console.log("📦 ข้อมูลที่ได้:", result); 
+        if (result.status === 1 && Array.isArray(result.userList)) {
             userData = result.userList;
         } else {
             userData = [];
+            alert("⚠️ " + (result.message || "ไม่พบข้อมูล หรือเซิร์ฟเวอร์แจ้งข้อผิดพลาด"));
         }
     } catch (err) {
-        console.error("โหลดข้อมูลล้มเหลว:", err);
-        alert(" ไม่สามารถโหลดข้อมูลจากเซิร์ฟเวอร์ได้");
+        console.error("❌ โหลดข้อมูลล้มเหลว:", err);
+        alert("❌ ไม่สามารถโหลดข้อมูลจากเซิร์ฟเวอร์ได้: " + err.message);
         userData = [];
     } finally {
         renderData('all');
     }
 }
+
 document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -26,30 +29,35 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
         renderData(btn.dataset.filter, document.getElementById('search-input').value.trim().toLowerCase());
     });
 });
+
 document.getElementById('search-input').addEventListener('input', (e) => {
     renderData(document.querySelector('.tab-btn.active').dataset.filter, e.target.value.trim().toLowerCase());
 });
+
 function renderData(filterType, keyword = '') {
     let filtered = userData.filter(u => {
         let passFilter = false;
         if (filterType === 'all') passFilter = true;
         if (filterType === 'male') passFilter = (u.gender === 'male');
         if (filterType === 'female') passFilter = (u.gender === 'female');
-        if (filterType === 'block') passFilter = (u.status === 'blocked');
+        if (filterType === 'block') passFilter = (u.status === 'blocked' || u.status === 'banned');
         let passSearch = true;
         if (keyword) {
-            passSearch = (u.displayName?.toLowerCase().includes(keyword) || u.userId?.toLowerCase().includes(keyword));
+            passSearch = (
+                (u.displayName || '').toLowerCase().includes(keyword) || 
+                (u.userId || '').toLowerCase().includes(keyword) ||
+                (u.email || '').toLowerCase().includes(keyword)
+            );
         }
         return passFilter && passSearch;
     });
-
     const container = document.getElementById('dataContainer');
     container.innerHTML = '';
-
     if (filtered.length === 0) {
         container.innerHTML = '<div class="empty-text">ไม่พบข้อมูล</div>';
         return;
     }
+
     filtered.forEach((u) => {
         const wrap = document.createElement('div');
         wrap.className = 'item-wrap';
@@ -60,8 +68,9 @@ function renderData(filterType, keyword = '') {
             <div class="profile-info">
                 <div class="profile-name">${u.displayName || 'ไม่มีชื่อ'}</div>
                 <div class="profile-username">@${u.userId || 'user'}</div>
+                <div class="profile-email">${u.email || '-'}</div>
             </div>
-            <div class="more-btn" data-uid="${u.id || u.userId}" style="margin-left:auto; color:var(--dim); font-size:22px; font-weight:bold; padding:2px 6px; cursor:pointer;">⋮</div>
+            <div class="more-btn" data-uid="${u.userId || u.id}" style="margin-left:auto; color:var(--dim); font-size:22px; font-weight:bold; padding:2px 6px; cursor:pointer;">⋮</div>
         `;
 
         const codeBlock = document.createElement('div');
@@ -80,29 +89,32 @@ function renderData(filterType, keyword = '') {
 
     bindMenuButtons();
 }
+
 function bindMenuButtons() {
     const menu = document.getElementById('contextMenu');
     document.querySelectorAll('.more-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
             selectedUserId = btn.dataset.uid;
-
+            const user = userData.find(u => (u.userId || u.id) === selectedUserId);
             const rect = btn.getBoundingClientRect();
             menu.style.left = `${rect.left - 120}px`;
             menu.style.top = `${rect.bottom + 5}px`;
             menu.style.display = 'block';
         });
     });
+
     document.addEventListener('click', () => {
         menu.style.display = 'none';
     });
 }
+
 document.querySelectorAll('.menu-item').forEach(item => {
     item.addEventListener('click', () => {
         const action = item.dataset.action;
-        const user = userData.find(u => (u.id || u.userId) === selectedUserId);
+        const user = userData.find(u => (u.userId || u.id) === selectedUserId);
         document.getElementById('contextMenu').style.display = 'none';
-
+        if (!user) { alert("❌ ไม่พบข้อมูลผู้ใช้"); return; }
         if (action === 'edit') {
             document.getElementById('mainPage').style.display = 'none';
             document.getElementById('editPage').style.display = 'block';
@@ -110,7 +122,7 @@ document.querySelectorAll('.menu-item').forEach(item => {
         }
 
         if (action === 'profile') {
-            alert(`👤 โปรไฟล์: ${user.displayName || '-'}\nอีเมล: ${user.email || '-'}`);
+            alert(`👤 ชื่อ: ${user.displayName || '-'}\n🔖 ไอดี: ${user.userId || '-'}\n📧 อีเมล: ${user.email || '-'}\n⚧️ เพศ: ${user.gender || '-'}\n📌 สถานะ: ${user.status || 'active'}`);
         }
 
         if (action === 'delete') {
@@ -119,16 +131,25 @@ document.querySelectorAll('.menu-item').forEach(item => {
         }
     });
 });
+
 document.getElementById('saveData').addEventListener('click', async () => {
     try {
         const updated = JSON.parse(document.getElementById('jsonEditor').value);
+        const sendData = {
+            id: updated.id,
+            displayName: updated.displayName,
+            userId: updated.userId,
+            email: updated.email,
+            gender: updated.gender,
+            status: updated.status
+        };
         const res = await fetch(`${API_URL}/api/user/update`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(updated)
+            body: JSON.stringify(sendData)
         });
-        const result = await res.json();
 
+        const result = await res.json();
         if (result.status === 1) {
             alert('✅ บันทึกเรียบร้อย');
             await loadRealData();
@@ -156,7 +177,6 @@ document.getElementById('confirmDelete').addEventListener('click', async () => {
                 body: JSON.stringify({ userId: selectedUserId })
             });
             const result = await res.json();
-
             if (result.status === 1) {
                 alert('🗑️ ลบเรียบร้อย');
                 await loadRealData();
