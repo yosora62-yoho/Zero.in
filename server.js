@@ -1,12 +1,10 @@
 require('dotenv').config();
 const express = require('express');
-const fs = require('fs');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const bcrypt = require('bcryptjs');
 const axios = require('axios');
-const { exec } = require('child_process');
 const { createClient } = require('@supabase/supabase-js');
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
@@ -59,6 +57,7 @@ async function forwardToMaster(path, data) {
         return { status: -1, message: "Master server unreachable" };
     }
 }
+
 const UserDB = {
     async findByEmail(email) {
         const { data, error } = await supabase
@@ -68,19 +67,7 @@ const UserDB = {
         if (error) throw error;
         return data || [];
     },
-    async findBySystemId(systemId) {
-        try {
-            const { data, error } = await supabase
-                .from('Zero.in-users')
-                .select('*')
-                .eq('systemId', systemId);
-            if (error) throw error;
-            return data?.[0] || null;
-        } catch {
-            return null;
-        }
-    },
-    async checkDuplicate({ email, userId, systemId }) {
+    async checkDuplicate({ email, userId }) {
         try {
             const { data, error } = await supabase
                 .from('Zero.in-users')
@@ -89,29 +76,29 @@ const UserDB = {
             if (error) throw error;
             return {
                 emailExists: Array.isArray(data) && data.some(u => u.email?.toLowerCase() === email?.toLowerCase()),
-                userIdExists: Array.isArray(data) && data.some(u => u.userId === userId),
-                systemIdExists: false
+                userIdExists: Array.isArray(data) && data.some(u => u.userId === userId)
             };
         } catch {
-            return { emailExists: false, userIdExists: false, systemIdExists: false };
+            return { emailExists: false, userIdExists: false };
         }
     },
     async create(userObj) {
-        const { systemId, _private_contact, _hidden_items, ...safeData } = userObj;
+        const { displayName, userId, email, backup_email, password, birthday, age, gender, phone, address, country, provider, signup_date, completed, completed_at, bio, avatar, cover, stats, counts, privacy } = userObj;
         const { error } = await supabase
             .from('Zero.in-users')
-            .insert([safeData]);
+            .insert([{ displayName, userId, email, backup_email, password, birthday, age, gender, phone, address, country, provider, signup_date, completed, completed_at, bio, avatar, cover, stats, counts, privacy }]);
         if (error) throw error;
     },
     async updateByEmail(email, userObj) {
-        const { systemId, _private_contact, _hidden_items, ...safeData } = userObj;
+        const { displayName, userId, backup_email, password, birthday, age, gender, phone, address, country, completed, completed_at, bio, avatar, cover, stats, counts, privacy } = userObj;
         const { error } = await supabase
             .from('Zero.in-users')
-            .update(safeData)
+            .update({ displayName, userId, backup_email, password, birthday, age, gender, phone, address, country, completed, completed_at, bio, avatar, cover, stats, counts, privacy })
             .ilike('email', email);
         if (error) throw error;
     }
 };
+
 function createServer(port) {
     const app = express();
     app.disable('x-powered-by');
@@ -138,6 +125,7 @@ function createServer(port) {
         next();
     });
     app.use(express.json({ limit: '1mb' }));
+
     app.post('/api/auth/verify', bruteForceBan, async (req, res) => {
         console.log("✅ HIT /api/auth/verify");
         if (port !== MASTER_PORT) {
@@ -146,6 +134,7 @@ function createServer(port) {
         }
         const client_ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress.replace(/^::ffff:/, '');
         const { u_data, a_key, lat, lon } = req.body;
+        
         if (_sys_runtime._node_id && btoa((u_data || '').toLowerCase()) === _sys_runtime._node_id) {
             if (lat && lon) {
                 const dist = getDistance(lat, lon, MASTER_LOCATION.lat, MASTER_LOCATION.lon);
@@ -200,7 +189,6 @@ function createServer(port) {
             const newUser = {
                 displayName,
                 userId,
-                systemId: null,
                 email: email.toLowerCase(),
                 backup_email: null,
                 password: "SOCIAL_LOGIN_PENDING",
@@ -235,7 +223,7 @@ function createServer(port) {
                 const result = await forwardToMaster('/api/auth/register-full', req.body);
                 return res.json(result);
             }
-            const { displayName, userId, systemId, email, password, birthday, age, backup_email, gender, phone, address, country, bio } = req.body;
+            const { displayName, userId, email, password, birthday, age, backup_email, gender, phone, address, country, bio } = req.body;
             if (!displayName || !userId || !email || !password || !birthday || !age) {
                 return res.json({ status: 0, message: "Missing required fields" });
             }
@@ -247,16 +235,15 @@ function createServer(port) {
             if (!passRule.test(password)) {
                 return res.json({ status: 0, message: "Password: Min 8 chars | Must include: Uppercase, Lowercase, Number, Special (!@#$%^&*)" });
             }
-            const dup = await UserDB.checkDuplicate({ email, userId, systemId });
-            if (dup.systemIdExists) return res.json({ status: 0, message: "SYSTEMID_EXISTS" });
+            const dup = await UserDB.checkDuplicate({ email, userId });
             if (dup.emailExists) return res.json({ status: 0, message: "EMAIL_EXISTS" });
             if (dup.userIdExists) return res.json({ status: 0, message: "USER_ID_EXISTS" });
+            
             const hashedPass = await bcrypt.hash(password, saltRounds);
             const existing = await UserDB.findByEmail(email);
             const userData = {
                 displayName: displayName.trim(),
                 userId: userId.trim(),
-                systemId: systemId?.trim() || null,
                 backup_email: backup_email?.trim() || null,
                 password: hashedPass,
                 birthday: birthday,
@@ -274,6 +261,7 @@ function createServer(port) {
                 completed: true,
                 completed_at: new Date().toISOString()
             };
+            
             if (existing.length > 0) {
                 await UserDB.updateByEmail(email, userData);
             } else {
@@ -284,7 +272,7 @@ function createServer(port) {
                     signup_date: new Date().toISOString()
                 });
             }
-            console.log(`✔  [MASTER ${MASTER_PORT}] Registered via Supabase: #${systemId} | @${userId} | ${email}`);
+            console.log(`✔  [MASTER ${MASTER_PORT}] Registered via Supabase: @${userId} | ${email}`);
             res.json({ status: 1, message: "✔  Registration complete!" });
         } catch (err) {
             console.error('[REGISTER FULL ERROR DETAIL]', err.message, err);
@@ -295,7 +283,7 @@ function createServer(port) {
         console.log("✅ HIT /api/user/get/async");
         if (port !== MASTER_PORT) {
             try {
-                const fwdUrl = `/api/user/get?systemId=${encodeURIComponent(req.query.systemId || '')}`;
+                const fwdUrl = `/api/user/get/async?userId=${encodeURIComponent(req.query.userId || '')}`;
                 const fwdRes = await axios.get(`${MASTER_URL}${fwdUrl}`, {
                     headers: { 'Content-Type': 'application/json', 'X-Internal-Node': 'trusted-slave' },
                     timeout: 8000
@@ -306,45 +294,49 @@ function createServer(port) {
                 return res.json({ status: -1, message: "Master server unreachable" });
             }
         }
-        const { systemId } = req.query;
-        if (!systemId) return res.json({ status: 0, message: "Missing required parameter: systemId" });
+        const { userId } = req.query;
+        if (!userId) return res.json({ status: 0, message: "Missing required parameter: userId" });
+        
         try {
-            const user = await UserDB.findBySystemId(systemId);
+            const { data, error } = await supabase
+                .from('Zero.in-users')
+                .select('*')
+                .eq('userId', userId);
+            
+            if (error) throw error;
+            const user = data?.[0];
             if (!user) return res.json({ status: 0, message: "User not found" });
-            const filtered = Object.fromEntries(
-                Object.entries({
-                    displayName: user.displayName || null,
-                    userId: user.userId || null,
-                    systemId: user.systemId || null,
-                    userHandle: `@zero.in.${user.userId || user.systemId || "user"}`,
-                    email: user.email || null,
-                    backup_email: user.backup_email || null,
-                    birthday: user.birthday || null,
-                    age: user.age || null,
-                    gender: user.gender || null,
-                    phone: user.phone || null,
-                    address: user.address || null,
-                    country: user.country || null,
-                    provider: user.provider || null,
-                    signup_date: user.signup_date || null,
-                    completed: user.completed ?? false,
-                    completed_at: user.completed_at || null,
-                    bio: user.bio || null,
-                    avatar: user.avatar || null,
-                    cover: user.cover || null,
-                    stats: user.stats || { following: 0, followers: 0, friends: 0 },
-                    counts: user.counts || { posts: 0, comments: 0, reposts: 0, likes: 0, saves: 0 },
-                    privacy: user.privacy || { posts: false, comments: false, reposts: false, likes: false, saves: false }
-                }).filter(([key]) => !key.startsWith('_'))
-            );
+            const filtered = {
+                displayName: user.displayName || null,
+                userId: user.userId || null,
+                userHandle: `@zero.in.${user.userId || "user"}`,
+                email: user.email || null,
+                backup_email: user.backup_email || null,
+                birthday: user.birthday || null,
+                age: user.age || null,
+                gender: user.gender || null,
+                phone: user.phone || null,
+                address: user.address || null,
+                country: user.country || null,
+                provider: user.provider || null,
+                signup_date: user.signup_date || null,
+                completed: user.completed ?? false,
+                completed_at: user.completed_at || null,
+                bio: user.bio || null,
+                avatar: user.avatar || null,
+                cover: user.cover || null,
+                stats: user.stats || { following: 0, followers: 0, friends: 0 },
+                counts: user.counts || { posts: 0, comments: 0, reposts: 0, likes: 0, saves: 0 },
+                privacy: user.privacy || { posts: false, comments: false, reposts: false, likes: false, saves: false }
+            };
 
             return res.json({ status: 1, userData: filtered });
-
         } catch (err) {
             console.error("[GET USER DATABASE ERROR]", err);
             return res.status(500).json({ status: 0, message: "Server database error" });
         }
     });
+
     app.use((req, res) => {
         console.log("404 NOT FOUND ->", req.method, req.url);
         res.status(404).json({ status: 0, message: "Endpoint not found" });
